@@ -779,6 +779,7 @@
             <div class="app-access-item" id="ai-new-sistem_penjahit">
               <label><input type="checkbox" id="app-new-sistem_penjahit" onchange="toggleAppItem('new','sistem_penjahit')"> ✂️ Sistem Penjahit Seragam Sekolah</label>
               <select id="role-new-sistem_penjahit" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+              <select id="toko-new-sistem_penjahit" disabled style="margin-top:4px"><option value="harmonis_sentral">Harmonis Sentral</option><option value="harmoni_indonesia">Harmoni Indonesia</option></select>
             </div>
             <div class="app-access-item" id="ai-new-yhk">
               <label><input type="checkbox" id="app-new-yhk" onchange="toggleAppItem('new','yhk')"> 🏭 Sistem Penjahit Young Harmonis</label>
@@ -977,8 +978,10 @@
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
         const appBadges = u.role === 'owner'
           ? '<span class="app-badge">Semua App</span>'
-          : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) =>
-              `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}</span>`).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
+          : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) => {
+              const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
+              return `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}${tokoInfo}</span>`;
+            }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
         return `<tr>
           <td><strong>${u.nama || '—'}</strong></td>
           <td style="color:#6b7280;font-size:12px;">${u.email || '—'}</td>
@@ -998,7 +1001,6 @@
     const email    = document.getElementById('new-email').value.trim();
     const password = document.getElementById('new-password').value;
     const role     = document.getElementById('new-role').value;
-    const toko     = document.getElementById('new-toko').value;
     const msgEl    = document.getElementById('add-user-msg');
     const btn      = document.getElementById('btn-add-user');
 
@@ -1133,15 +1135,21 @@
     const select  = document.getElementById(`role-${prefix}-${key}`);
     item.classList.toggle('on', checked);
     select.disabled = !checked;
+    // Toko selector khusus sistem_penjahit
+    const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
+    if (tokoSel) tokoSel.disabled = !checked;
   }
 
   function getAppsFromForm(prefix) {
     const apps = {};
     APP_KEYS.forEach(key => {
-      apps[key] = {
+      const entry = {
         akses: document.getElementById(`app-${prefix}-${key}`).checked,
         role:  document.getElementById(`role-${prefix}-${key}`).value,
       };
+      const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
+      if (tokoSel) entry.toko = tokoSel.value;
+      apps[key] = entry;
     });
     return apps;
   }
@@ -1151,6 +1159,8 @@
       document.getElementById(`app-${prefix}-${key}`).checked = false;
       document.getElementById(`ai-${prefix}-${key}`).classList.remove('on');
       document.getElementById(`role-${prefix}-${key}`).disabled = true;
+      const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
+      if (tokoSel) tokoSel.disabled = true;
     });
   }
 
