@@ -410,6 +410,20 @@
     .role-badge.staff  { background: #eff6ff; color: #2563eb; }
     .toko-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
+    .app-access-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .app-access-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      transition: border-color .2s, background .2s;
+    }
+    .app-access-item.on { border-color: var(--green); background: #f0fdf4; }
+    .app-access-item label { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; font-size: 13px; font-weight: 600; }
+    .app-access-item input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--green); }
+    .app-access-item select { padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 12px; background: #fff; }
+    .app-access-item select:disabled { opacity: .4; cursor: not-allowed; }
+    .apps-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+    .app-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #f0fdf4; color: #166534; font-weight: 600; border: 1px solid #86efac; }
+
     .btn-danger {
       background: none;
       border: 1px solid #fecaca;
@@ -704,8 +718,8 @@
             <tr>
               <th>Nama</th>
               <th>Email</th>
-              <th>Role</th>
-              <th>Toko</th>
+              <th>Tipe</th>
+              <th>Akses App & Role</th>
               <th></th>
             </tr>
           </thead>
@@ -752,20 +766,33 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Role</label>
+            <label>Tipe Akun</label>
             <select id="new-role">
               <option value="staff">Staff</option>
-              <option value="owner">Owner</option>
+              <option value="owner">Owner (akses semua)</option>
             </select>
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:16px; max-width:300px;">
-          <label>Akses Toko</label>
-          <select id="new-toko">
-            <option value="harmoni_indonesia">Harmoni Indonesia</option>
-            <option value="harmonis_sentral">Harmonis Sentral</option>
-            <option value="semua">Semua Toko (Owner)</option>
-          </select>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Akses Aplikasi & Role</label>
+          <div class="app-access-grid" id="new-app-grid">
+            <div class="app-access-item" id="ai-new-sistem_penjahit">
+              <label><input type="checkbox" id="app-new-sistem_penjahit" onchange="toggleAppItem('new','sistem_penjahit')"> ✂️ Sistem Penjahit Seragam Sekolah</label>
+              <select id="role-new-sistem_penjahit" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+            </div>
+            <div class="app-access-item" id="ai-new-yhk">
+              <label><input type="checkbox" id="app-new-yhk" onchange="toggleAppItem('new','yhk')"> 🏭 Sistem Penjahit Young Harmonis</label>
+              <select id="role-new-yhk" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+            </div>
+            <div class="app-access-item" id="ai-new-custom_order">
+              <label><input type="checkbox" id="app-new-custom_order" onchange="toggleAppItem('new','custom_order')"> 📋 Harmoni Custom Order</label>
+              <select id="role-new-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+            </div>
+            <div class="app-access-item" id="ai-new-laporan_keuangan">
+              <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
+              <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+            </div>
+          </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
         <div id="add-user-msg"></div>
@@ -941,18 +968,22 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const tokoLabel = { semua: 'Semua Toko', harmoni_indonesia: 'Harmoni Indonesia', harmonis_sentral: 'Harmonis Sentral' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         const isSelf = currentProfile && u.email === currentProfile.email;
         const actions = isSelf ? '' : `
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
+        const appBadges = u.role === 'owner'
+          ? '<span class="app-badge">Semua App</span>'
+          : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) =>
+              `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}</span>`).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
         return `<tr>
           <td><strong>${u.nama || '—'}</strong></td>
-          <td style="color:#6b7280">${u.email || '—'}</td>
+          <td style="color:#6b7280;font-size:12px;">${u.email || '—'}</td>
           <td><span class="role-badge ${u.role}">${u.role}</span></td>
-          <td><div class="toko-label">${tokoLabel[u.toko] || u.toko || '—'}</div></td>
+          <td><div class="apps-badges">${appBadges}</div></td>
           <td>${actions}</td>
         </tr>`;
       }).join('');
@@ -979,9 +1010,11 @@
     btn.textContent = 'Menyimpan...';
 
     try {
+      const apps = getAppsFromForm('new');
       const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      await db.collection('users').doc(cred.user.uid).set({ nama, email, role, toko, aktif: true });
+      await db.collection('users').doc(cred.user.uid).set({ nama, email, role, apps, aktif: true });
       await secondaryAuth.signOut();
+      resetAppForm('new');
       showMsg(`Pengguna "${nama}" berhasil ditambahkan.`, 'success');
       // tampilkan password sekali untuk dicopy
       document.getElementById('created-pass-val').textContent = password;
@@ -1089,6 +1122,36 @@
   function copyCreatedPass() {
     const val = document.getElementById('created-pass-val').textContent;
     navigator.clipboard.writeText(val).then(() => alert('Password disalin!'));
+  }
+
+  // ── APP ACCESS TOGGLE ──
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan'];
+
+  function toggleAppItem(prefix, key) {
+    const checked = document.getElementById(`app-${prefix}-${key}`).checked;
+    const item    = document.getElementById(`ai-${prefix}-${key}`);
+    const select  = document.getElementById(`role-${prefix}-${key}`);
+    item.classList.toggle('on', checked);
+    select.disabled = !checked;
+  }
+
+  function getAppsFromForm(prefix) {
+    const apps = {};
+    APP_KEYS.forEach(key => {
+      apps[key] = {
+        akses: document.getElementById(`app-${prefix}-${key}`).checked,
+        role:  document.getElementById(`role-${prefix}-${key}`).value,
+      };
+    });
+    return apps;
+  }
+
+  function resetAppForm(prefix) {
+    APP_KEYS.forEach(key => {
+      document.getElementById(`app-${prefix}-${key}`).checked = false;
+      document.getElementById(`ai-${prefix}-${key}`).classList.remove('on');
+      document.getElementById(`role-${prefix}-${key}`).disabled = true;
+    });
   }
 
   // ── TOGGLE LOGIN / REGISTER FORM ──
