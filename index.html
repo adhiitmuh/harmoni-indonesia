@@ -543,15 +543,52 @@
       <p>Indonesia — Portal Utama</p>
     </div>
     <div id="login-error"></div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="login-email" placeholder="email@harmoni.id" autocomplete="email">
+
+    <!-- Form Login -->
+    <div id="form-login">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="email@harmoni.id" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-login" id="btn-login">Masuk</button>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" id="link-to-register" style="font-size:13px;color:#065652;">Belum punya akun? Daftar di sini</a>
+      </div>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+
+    <!-- Form Daftar -->
+    <div id="form-register" style="display:none;">
+      <div class="form-group">
+        <label>Nama Lengkap</label>
+        <input type="text" id="reg-nama" placeholder="Nama kamu">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="email@contoh.com">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="reg-password" placeholder="Min. 6 karakter">
+          <button type="button" class="btn-toggle-pass" onclick="toggleRegPass()">👁️</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Akses untuk</label>
+        <select id="reg-toko" style="width:100%;padding:10px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-family:inherit;font-size:14px;outline:none;">
+          <option value="harmoni_indonesia">Harmoni Indonesia</option>
+          <option value="harmonis_sentral">Harmonis Sentral</option>
+        </select>
+      </div>
+      <button class="btn-login" id="btn-register">Kirim Permintaan Daftar</button>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" id="link-to-login" style="font-size:13px;color:#065652;">Sudah punya akun? Masuk</a>
+      </div>
     </div>
-    <button class="btn-login" id="btn-login">Masuk</button>
   </div>
 </div>
 
@@ -654,6 +691,7 @@
 
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="switchTab('tab-list')">Daftar User</button>
+      <button class="nav-tab" onclick="switchTab('tab-pending')">Menunggu Approval <span id="pending-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;display:none;"></span></button>
       <button class="nav-tab" onclick="switchTab('tab-add')">Tambah User</button>
     </div>
 
@@ -673,6 +711,19 @@
           </thead>
           <tbody id="users-tbody">
             <tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pending Approval -->
+    <div id="tab-pending" style="display:none;">
+      <div class="card">
+        <h3>Permintaan Daftar — Menunggu Approval</h3>
+        <table class="users-table">
+          <thead><tr><th>Nama</th><th>Email</th><th>Toko</th><th></th></tr></thead>
+          <tbody id="pending-tbody">
+            <tr><td colspan="4" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>
           </tbody>
         </table>
       </div>
@@ -742,9 +793,9 @@
     measurementId:     'G-MS81TCG347'
   };
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db   = firebase.firestore();
+  firebase.initializeApp(firebaseConfig, 'harmoni-auth');
+  const auth = firebase.app('harmoni-auth').auth();
+  const db   = firebase.app('harmoni-auth').firestore();
 
   // ── secondary app untuk buat user baru tanpa logout ──
   const secondaryApp  = firebase.initializeApp(firebaseConfig, 'secondary');
@@ -766,12 +817,20 @@
     try {
       const snap = await db.collection('users').doc(user.uid).get();
       if (!snap.exists) {
-        // user belum ada di Firestore — buat otomatis sebagai owner (pertama kali)
         const profile = { nama: user.email.split('@')[0], email: user.email, role: 'owner', toko: 'semua', aktif: true };
         await db.collection('users').doc(user.uid).set(profile);
         currentProfile = profile;
       } else {
         currentProfile = snap.data();
+      }
+      if (!currentProfile.aktif) {
+        hide('loading-screen');
+        block('login-screen');
+        const errEl = document.getElementById('login-error');
+        errEl.textContent = 'Akun belum diaktifkan. Hubungi admin.';
+        errEl.style.display = 'block';
+        auth.signOut();
+        return;
       }
       renderDashboard(currentProfile);
     } catch (e) {
@@ -860,14 +919,16 @@
     hide('main-dashboard');
     show('main-users');
     loadUsers();
+    loadPendingCount();
   }
 
   function switchTab(tabId) {
-    ['tab-list', 'tab-add'].forEach(id => hide(id));
+    ['tab-list', 'tab-pending', 'tab-add'].forEach(id => hide(id));
     show(tabId);
     document.querySelectorAll('.nav-tab').forEach((btn, i) => {
-      btn.classList.toggle('active', ['tab-list','tab-add'][i] === tabId);
+      btn.classList.toggle('active', ['tab-list','tab-pending','tab-add'][i] === tabId);
     });
+    if (tabId === 'tab-pending') loadPending();
   }
 
   // ── LOAD USERS ──
@@ -953,6 +1014,56 @@
     }
   }
 
+  // ── LOAD PENDING ──
+  async function loadPendingCount() {
+    try {
+      const snap = await db.collection('users').where('aktif', '==', false).get();
+      const badge = document.getElementById('pending-badge');
+      if (badge) {
+        badge.textContent = snap.size;
+        badge.style.display = snap.size > 0 ? '' : 'none';
+      }
+    } catch {}
+  }
+
+  async function loadPending() {
+    const tbody = document.getElementById('pending-tbody');
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
+    try {
+      const snap = await db.collection('users').where('aktif', '==', false).get();
+      const tokoLabel = { harmoni_indonesia: 'Harmoni Indonesia', harmonis_sentral: 'Harmonis Sentral', semua: 'Semua Toko' };
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#9ca3af;text-align:center;padding:20px;">Tidak ada permintaan.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = snap.docs.map(d => {
+        const u = d.data();
+        return `<tr>
+          <td><strong>${u.nama || '—'}</strong></td>
+          <td style="color:#6b7280">${u.email || '—'}</td>
+          <td><div class="toko-label">${tokoLabel[u.toko] || u.toko || '—'}</div></td>
+          <td>
+            <button class="btn-primary" style="padding:4px 12px;font-size:12px;" onclick="approveUser('${d.id}','${u.nama}')">Setujui</button>
+            <button class="btn-danger" style="margin-left:4px;" onclick="hapusUser('${d.id}','${u.nama}')">Tolak</button>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color:red;">Gagal memuat: ${e.message}</td></tr>`;
+    }
+  }
+
+  async function approveUser(uid, nama) {
+    try {
+      await db.collection('users').doc(uid).update({ aktif: true });
+      alert(`Akun "${nama}" sudah diaktifkan.`);
+      loadPending();
+      loadPendingCount();
+    } catch (e) {
+      alert('Gagal: ' + e.message);
+    }
+  }
+
   // ── RESET PASSWORD VIA EMAIL ──
   async function kirimResetEmail(email, nama) {
     if (!confirm(`Kirim email reset password ke ${nama} (${email})?`)) return;
@@ -969,12 +1080,64 @@
     const inp = document.getElementById('new-password');
     inp.type = inp.type === 'password' ? 'text' : 'password';
   }
+  function toggleRegPass() {
+    const inp = document.getElementById('reg-password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
 
   // ── COPY PASSWORD SETELAH BUAT AKUN ──
   function copyCreatedPass() {
     const val = document.getElementById('created-pass-val').textContent;
     navigator.clipboard.writeText(val).then(() => alert('Password disalin!'));
   }
+
+  // ── TOGGLE LOGIN / REGISTER FORM ──
+  document.getElementById('link-to-register').addEventListener('click', e => {
+    e.preventDefault();
+    hide('form-login');
+    show('form-register');
+    document.getElementById('login-error').style.display = 'none';
+  });
+  document.getElementById('link-to-login').addEventListener('click', e => {
+    e.preventDefault();
+    hide('form-register');
+    show('form-login');
+    document.getElementById('login-error').style.display = 'none';
+  });
+
+  // ── SELF REGISTRATION ──
+  document.getElementById('btn-register').addEventListener('click', async () => {
+    const nama     = document.getElementById('reg-nama').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const toko     = document.getElementById('reg-toko').value;
+    const errEl    = document.getElementById('login-error');
+    const btn      = document.getElementById('btn-register');
+
+    errEl.style.display = 'none';
+    if (!nama || !email || !password) { errEl.textContent = 'Semua field wajib diisi.'; errEl.style.display = 'block'; return; }
+    if (password.length < 6) { errEl.textContent = 'Password minimal 6 karakter.'; errEl.style.display = 'block'; return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Mengirim...';
+    try {
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      await db.collection('users').doc(cred.user.uid).set({ nama, email, role: 'staff', toko, aktif: false });
+      await secondaryAuth.signOut();
+      hide('form-register');
+      show('form-login');
+      errEl.style.background = '#f0fdf4';
+      errEl.style.borderColor = '#86efac';
+      errEl.style.color = '#15803d';
+      errEl.textContent = '✅ Permintaan dikirim! Tunggu persetujuan admin sebelum bisa login.';
+      errEl.style.display = 'block';
+    } catch (e) {
+      errEl.textContent = pesanError(e.code) || e.message;
+      errEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Kirim Permintaan Daftar';
+  });
 </script>
 </body>
 </html>
