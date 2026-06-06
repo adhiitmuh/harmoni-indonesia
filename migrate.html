@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmoni — Migrasi Data</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Raleway', sans-serif; background: #f5f5f5; padding: 32px 16px; color: #1a1a1a; }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; color: #034543; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #6b7280; margin-bottom: 28px; }
+    .warning {
+      background: #fef3c7; border: 1px solid #fbbf24;
+      border-radius: 10px; padding: 14px 16px;
+      font-size: 13px; color: #92400e; margin-bottom: 24px; line-height: 1.6;
+    }
+    .apps-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+    .app-item {
+      background: #fff; border: 1.5px solid #e0e0e0;
+      border-radius: 12px; padding: 18px 20px;
+    }
+    .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .app-name { font-size: 15px; font-weight: 700; color: #034543; }
+    .app-project { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+    .btn {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: #034543; color: #FFFBD5; }
+    .btn-primary:hover:not(:disabled) { background: #065652; }
+    .btn-success { background: #15803d; color: #fff; }
+    .progress-area { display: none; margin-top: 12px; }
+    .progress-bar-wrap {
+      height: 8px; background: #e5e7eb; border-radius: 20px; overflow: hidden; margin-bottom: 8px;
+    }
+    .progress-bar { height: 100%; background: #034543; border-radius: 20px; width: 0%; transition: width .3s; }
+    .log {
+      background: #f9fafb; border: 1px solid #e5e7eb;
+      border-radius: 8px; padding: 10px 12px;
+      font-size: 12px; color: #374151; max-height: 160px;
+      overflow-y: auto; line-height: 1.7;
+      font-family: monospace;
+    }
+    .log .ok   { color: #15803d; }
+    .log .err  { color: #dc2626; }
+    .log .info { color: #2563eb; }
+    .status-badge {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 2px 10px; border-radius: 20px;
+    }
+    .badge-pending  { background: #f3f4f6; color: #6b7280; }
+    .badge-running  { background: #dbeafe; color: #1d4ed8; }
+    .badge-done     { background: #dcfce7; color: #15803d; }
+    .badge-error    { background: #fee2e2; color: #dc2626; }
+    .divider { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
+    .btn-migrate-all {
+      width: 100%; padding: 14px; font-size: 15px;
+      background: #034543; color: #FFFBD5;
+      border: none; border-radius: 10px;
+      font-family: inherit; font-weight: 700;
+      cursor: pointer; transition: background .2s;
+    }
+    .btn-migrate-all:hover:not(:disabled) { background: #065652; }
+    .btn-migrate-all:disabled { opacity: .5; cursor: not-allowed; }
+    #global-status { text-align: center; margin-top: 14px; font-size: 13px; color: #6b7280; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔄 Migrasi Data ke Harmoni Indonesia</h1>
+  <p class="subtitle">Tool ini akan menyalin semua data dari Firebase lama ke project harmoni-indonesia.</p>
+
+  <div class="warning">
+    ⚠️ <strong>Jalankan sekali saja.</strong> Pastikan kamu sudah login ke portal Harmoni Indonesia di tab lain sebelum menjalankan migrasi ini. Proses tidak bisa dibatalkan di tengah jalan.
+  </div>
+
+  <div class="apps-list">
+
+    <!-- Sistem Penjahit Seragam Sekolah -->
+    <div class="app-item" id="app-penjahit">
+      <div class="app-header">
+        <div>
+          <div class="app-name">Sistem Penjahit Seragam Sekolah</div>
+          <div class="app-project">adhiitmuh-jahit-sekolah → harmoni-indonesia</div>
+        </div>
+        <span class="status-badge badge-pending" id="badge-penjahit">Menunggu</span>
+      </div>
+      <div class="progress-area" id="progress-penjahit">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="bar-penjahit"></div></div>
+        <div class="log" id="log-penjahit"></div>
+      </div>
+    </div>
+
+    <!-- Laporan Keuangan -->
+    <div class="app-item" id="app-keuangan">
+      <div class="app-header">
+        <div>
+          <div class="app-name">Laporan Keuangan</div>
+          <div class="app-project">laporan-keuangan-hs → harmoni-indonesia</div>
+        </div>
+        <span class="status-badge badge-pending" id="badge-keuangan">Menunggu</span>
+      </div>
+      <div class="progress-area" id="progress-keuangan">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="bar-keuangan"></div></div>
+        <div class="log" id="log-keuangan"></div>
+      </div>
+    </div>
+
+    <!-- Harmoni Custom Order -->
+    <div class="app-item" id="app-order">
+      <div class="app-header">
+        <div>
+          <div class="app-name">Harmoni Custom Order</div>
+          <div class="app-project">harmoni-custom-order → harmoni-indonesia</div>
+        </div>
+        <span class="status-badge badge-pending" id="badge-order">Menunggu</span>
+      </div>
+      <div class="progress-area" id="progress-order">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="bar-order"></div></div>
+        <div class="log" id="log-order"></div>
+      </div>
+    </div>
+
+    <!-- YHK Produksi -->
+    <div class="app-item" id="app-yhk">
+      <div class="app-header">
+        <div>
+          <div class="app-name">Sistem Penjahit Young Harmonis</div>
+          <div class="app-project">yh-sistem-produksi → harmoni-indonesia</div>
+        </div>
+        <span class="status-badge badge-pending" id="badge-yhk">Menunggu</span>
+      </div>
+      <div class="progress-area" id="progress-yhk">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="bar-yhk"></div></div>
+        <div class="log" id="log-yhk"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <hr class="divider">
+  <button class="btn-migrate-all" id="btn-start">🚀 Mulai Migrasi Semua Data</button>
+  <div id="global-status"></div>
+</div>
+
+<script>
+  // ── CONFIG BARU (tujuan) ──
+  const newConfig = {
+    apiKey:            'AIzaSyA9V5Lw40pDeAWeQKijYCkdvnag8AlEe74',
+    authDomain:        'harmoni-indonesia.firebaseapp.com',
+    projectId:         'harmoni-indonesia',
+    storageBucket:     'harmoni-indonesia.firebasestorage.app',
+    messagingSenderId: '825719884876',
+    appId:             '1:825719884876:web:a8fd78d382e0f98cf6b8e9',
+  };
+
+  // ── CONFIG LAMA (sumber) ──
+  const configs = {
+    penjahit: {
+      apiKey: 'AIzaSyBBD_UY1gBprJ6ovIwckz1N6H8Fv2VBwiA',
+      authDomain: 'adhiitmuh-jahit-sekolah.firebaseapp.com',
+      projectId: 'adhiitmuh-jahit-sekolah',
+      storageBucket: 'adhiitmuh-jahit-sekolah.appspot.com',
+      messagingSenderId: '660674742862',
+      appId: '1:660674742862:web:placeholder',
+    },
+    keuangan: {
+      apiKey: 'AIzaSyAScvbOX6pJLvIXMgP7O5QqM85ZgTfX-Go',
+      authDomain: 'laporan-keuangan-hs.firebaseapp.com',
+      projectId: 'laporan-keuangan-hs',
+      storageBucket: 'laporan-keuangan-hs.firebasestorage.app',
+      messagingSenderId: '1029348456158',
+      appId: '1:1029348456158:web:8de02f1258e332ba96344f',
+    },
+    order: {
+      apiKey: 'AIzaSyAy4w2mhgZQfMBto7a9A8dhsrK2Envprf4',
+      authDomain: 'harmoni-custom-order.firebaseapp.com',
+      projectId: 'harmoni-custom-order',
+      storageBucket: 'harmoni-custom-order.firebasestorage.app',
+      messagingSenderId: '230484579154',
+      appId: '1:230484579154:web:929f7772c2db041466608b',
+    },
+    yhk: {
+      apiKey: 'AIzaSyDxkuQMUb0735kE2RrpSUtbuKSxfc-Kyqo',
+      authDomain: 'yh-sistem-produksi.firebaseapp.com',
+      projectId: 'yh-sistem-produksi',
+      storageBucket: 'yh-sistem-produksi.firebasestorage.app',
+      messagingSenderId: '819657921141',
+      appId: '1:819657921141:web:a5b69b5c234f68b7cb5e3c',
+    },
+  };
+
+  // ── inisialisasi Firebase tujuan ──
+  const newApp = firebase.initializeApp(newConfig, 'new');
+  const newDb  = newApp.firestore();
+
+  // ── Helpers UI ──
+  function setStatus(key, status) {
+    const el = document.getElementById(`badge-${key}`);
+    el.className = `status-badge badge-${status}`;
+    el.textContent = { pending:'Menunggu', running:'Berjalan...', done:'Selesai ✓', error:'Error' }[status];
+  }
+  function showProgress(key) {
+    document.getElementById(`progress-${key}`).style.display = 'block';
+  }
+  function setBar(key, pct) {
+    document.getElementById(`bar-${key}`).style.width = pct + '%';
+  }
+  function log(key, msg, type = '') {
+    const el = document.getElementById(`log-${key}`);
+    el.innerHTML += `<span class="${type}">${msg}</span>\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ── Copy satu collection secara rekursif ──
+  async function copyCollection(srcDb, destDb, collRef, destPath, key) {
+    const snap = await srcDb.collection(collRef).get();
+    if (snap.empty) return 0;
+    let count = 0;
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data();
+      await destDb.doc(`${destPath}/${docSnap.id}`).set(data, { merge: true });
+      count++;
+      // copy sub-collections juga (satu level)
+      const subColls = await docSnap.ref.listCollections().catch(() => []);
+      for (const sub of subColls) {
+        const subCount = await copyCollection(srcDb, destDb, `${collRef}/${docSnap.id}/${sub.id}`, `${destPath}/${docSnap.id}/${sub.id}`, key);
+        count += subCount;
+      }
+    }
+    return count;
+  }
+
+  // ── Migrasi satu app ──
+  async function migrateApp(key, config) {
+    setStatus(key, 'running');
+    showProgress(key);
+    log(key, `Menghubungkan ke ${config.projectId}...`, 'info');
+
+    let srcApp;
+    try {
+      srcApp = firebase.initializeApp(config, `src-${key}`);
+    } catch(e) {
+      srcApp = firebase.app(`src-${key}`);
+    }
+    const srcDb = srcApp.firestore();
+
+    try {
+      // Ambil semua collection di root
+      const rootColls = await srcDb.listCollections();
+      const total = rootColls.length;
+      log(key, `Ditemukan ${total} collection.`, 'info');
+      let done = 0;
+      let totalDocs = 0;
+
+      for (const coll of rootColls) {
+        log(key, `Menyalin collection: ${coll.id}...`);
+        const count = await copyCollection(srcDb, newDb, coll.id, coll.id, key);
+        totalDocs += count;
+        done++;
+        setBar(key, Math.round((done / total) * 100));
+        log(key, `  ✓ ${coll.id} — ${count} dokumen`, 'ok');
+      }
+
+      setBar(key, 100);
+      log(key, `Selesai! Total ${totalDocs} dokumen berhasil disalin.`, 'ok');
+      setStatus(key, 'done');
+    } catch (e) {
+      log(key, `Error: ${e.message}`, 'err');
+      setStatus(key, 'error');
+    }
+  }
+
+  // ── Jalankan semua ──
+  document.getElementById('btn-start').addEventListener('click', async () => {
+    const btn = document.getElementById('btn-start');
+    btn.disabled = true;
+    btn.textContent = '⏳ Migrasi berjalan...';
+    document.getElementById('global-status').textContent = 'Jangan tutup tab ini selama proses berlangsung.';
+
+    const apps = ['penjahit', 'keuangan', 'order', 'yhk'];
+    for (const key of apps) {
+      await migrateApp(key, configs[key]);
+    }
+
+    document.getElementById('global-status').textContent = '✅ Semua migrasi selesai! Kamu bisa tutup halaman ini.';
+    btn.textContent = '✅ Selesai';
+  });
+</script>
+</body>
+</html>
