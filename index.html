@@ -424,6 +424,80 @@
     }
     .btn-danger:hover { background: #fef2f2; }
 
+    .password-wrap {
+      position: relative;
+    }
+    .password-wrap input {
+      padding-right: 40px;
+    }
+    .btn-toggle-pass {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      color: var(--text-muted);
+      padding: 0;
+      line-height: 1;
+    }
+    .pass-dots {
+      font-family: monospace;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .reset-row td { background: #f9fafb; padding: 12px !important; }
+    .reset-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .reset-form input {
+      padding: 7px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      width: 200px;
+    }
+    .reset-form input:focus { border-color: var(--green); }
+    .btn-sm {
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-sm.save { background: var(--green); color: var(--cream); }
+    .btn-sm.cancel { background: #f3f4f6; color: var(--text-muted); }
+    .btn-reset {
+      background: none;
+      border: 1px solid #d1d5db;
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .btn-reset:hover { border-color: var(--green); color: var(--green); }
+    .pass-cell { display: flex; align-items: center; gap: 6px; }
+    .pass-text { font-family: monospace; font-size: 13px; }
+    .btn-eye {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
     .nav-tabs {
       display: flex;
       gap: 4px;
@@ -621,7 +695,10 @@
         <div class="form-row" style="margin-bottom:12px;">
           <div class="form-group">
             <label>Password</label>
-            <input type="password" id="new-password" placeholder="Min. 6 karakter">
+            <div class="password-wrap">
+              <input type="password" id="new-password" placeholder="Min. 6 karakter">
+              <button type="button" class="btn-toggle-pass" onclick="togglePass()">👁️</button>
+            </div>
           </div>
           <div class="form-group">
             <label>Role</label>
@@ -641,6 +718,14 @@
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
         <div id="add-user-msg"></div>
+        <div id="created-pass-box" style="display:none;margin-top:16px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 16px;">
+          <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">✅ Akun berhasil dibuat! Catat password ini:</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <code id="created-pass-val" style="font-size:15px;background:#dcfce7;padding:6px 12px;border-radius:6px;flex:1;letter-spacing:1px;"></code>
+            <button class="btn-sm save" onclick="copyCreatedPass()">Copy</button>
+          </div>
+          <div style="font-size:11px;color:#166534;margin-top:8px;">Kirimkan password ini ke staff yang bersangkutan. Mereka bisa menggantinya nanti via reset email.</div>
+        </div>
       </div>
     </div>
   </main>
@@ -799,12 +884,15 @@
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         const isSelf = currentProfile && u.email === currentProfile.email;
+        const actions = isSelf ? '' : `
+          <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
+          <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
         return `<tr>
           <td><strong>${u.nama || '—'}</strong></td>
           <td style="color:#6b7280">${u.email || '—'}</td>
           <td><span class="role-badge ${u.role}">${u.role}</span></td>
           <td><div class="toko-label">${tokoLabel[u.toko] || u.toko || '—'}</div></td>
-          <td>${isSelf ? '' : `<button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`}</td>
+          <td>${actions}</td>
         </tr>`;
       }).join('');
     } catch (e) {
@@ -834,8 +922,11 @@
       await db.collection('users').doc(cred.user.uid).set({ nama, email, role, toko, aktif: true });
       await secondaryAuth.signOut();
       showMsg(`Pengguna "${nama}" berhasil ditambahkan.`, 'success');
-      document.getElementById('new-nama').value = '';
-      document.getElementById('new-email').value = '';
+      // tampilkan password sekali untuk dicopy
+      document.getElementById('created-pass-val').textContent = password;
+      document.getElementById('created-pass-box').style.display = '';
+      document.getElementById('new-nama').value     = '';
+      document.getElementById('new-email').value    = '';
       document.getElementById('new-password').value = '';
     } catch (e) {
       showMsg(pesanError(e.code) || e.message, 'error');
@@ -860,6 +951,29 @@
     } catch (e) {
       alert('Gagal menghapus: ' + e.message);
     }
+  }
+
+  // ── RESET PASSWORD VIA EMAIL ──
+  async function kirimResetEmail(email, nama) {
+    if (!confirm(`Kirim email reset password ke ${nama} (${email})?`)) return;
+    try {
+      await auth.sendPasswordResetEmail(email);
+      alert(`Email reset password sudah dikirim ke ${email}.\nStaff perlu cek inbox (atau folder Spam).`);
+    } catch (e) {
+      alert('Gagal kirim email: ' + e.message);
+    }
+  }
+
+  // ── TOGGLE SHOW/HIDE PASSWORD ──
+  function togglePass() {
+    const inp = document.getElementById('new-password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  // ── COPY PASSWORD SETELAH BUAT AKUN ──
+  function copyCreatedPass() {
+    const val = document.getElementById('created-pass-val').textContent;
+    navigator.clipboard.writeText(val).then(() => alert('Password disalin!'));
   }
 </script>
 </body>
