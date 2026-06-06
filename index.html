@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harmoni Indonesia — Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:       #034543;
+      --green-light: #065652;
+      --green-dark:  #022e2c;
+      --cream:       #FFFBD5;
+      --cream-dark:  #f5f0c0;
+      --white:       #FAFAFA;
+      --border:      #e0e0e0;
+      --text:        #1a1a1a;
+      --text-muted:  #6b7280;
+      --red:         #dc2626;
+      --shadow:      0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: 'Raleway', sans-serif;
+      background: var(--white);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--cream) 0%, #eef8f7 60%, #ceecea 100%);
+      padding: 24px;
+    }
+
+    .login-box {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(3,69,67,0.12);
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-brand { text-align: center; margin-bottom: 28px; }
+    .login-brand h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: 2px;
+    }
+    .login-brand p {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .form-group input:focus { border-color: var(--green); }
+
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: var(--green);
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .5px;
+      margin-top: 8px;
+      transition: background .2s;
+    }
+    .btn-login:hover { background: var(--green-light); }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; }
+
+    #login-error {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: var(--red);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* ── LOADING ── */
+    #loading-screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: var(--cream);
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(3,69,67,.15);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-screen p { color: var(--green); font-weight: 600; font-size: 14px; }
+
+    /* ── DASHBOARD ── */
+    #dashboard-screen { display: none; min-height: 100vh; }
+
+    header {
+      background: var(--green);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-brand svg { flex-shrink: 0; }
+    .header-brand-text .brand-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--cream);
+      letter-spacing: 2px;
+    }
+    .header-brand-text .brand-sub {
+      font-size: 9px;
+      color: rgba(255,251,213,.5);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .user-avatar {
+      width: 32px; height: 32px;
+      background: rgba(255,251,213,.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--cream);
+    }
+    .user-info-text .uname {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cream);
+    }
+    .user-info-text .urole {
+      font-size: 10px;
+      color: rgba(255,251,213,.55);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.2);
+      color: var(--cream);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,.2); }
+
+    main { padding: 36px 32px; max-width: 1100px; margin: 0 auto; }
+
+    .welcome {
+      margin-bottom: 32px;
+    }
+    .welcome h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .welcome p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .section { margin-bottom: 36px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+    .section-badge {
+      background: var(--green);
+      color: var(--cream);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+    }
+    .section-badge.sentral { background: #5c4a1e; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .app-card {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: box-shadow .2s, border-color .2s, transform .15s;
+    }
+    .app-card:hover {
+      box-shadow: 0 6px 20px rgba(3,69,67,.1);
+      border-color: var(--green);
+      transform: translateY(-2px);
+    }
+    .app-icon {
+      width: 44px; height: 44px;
+      background: var(--cream);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .app-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .app-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .app-arrow {
+      margin-top: auto;
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* ── USER MANAGEMENT ── */
+    #users-screen { display: none; }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .btn-back {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: border-color .2s, color .2s;
+    }
+    .btn-back:hover { border-color: var(--green); color: var(--green); }
+    .page-header h2 { font-size: 20px; font-weight: 700; color: var(--green); }
+
+    .card {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    .form-group select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+    .form-group select:focus { border-color: var(--green); }
+
+    .btn-primary {
+      background: var(--green);
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      padding: 10px 20px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--green-light); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+    #add-user-msg {
+      margin-top: 12px;
+      font-size: 13px;
+      display: none;
+    }
+    #add-user-msg.success { color: #15803d; }
+    #add-user-msg.error   { color: var(--red); }
+
+    .users-table { width: 100%; border-collapse: collapse; }
+    .users-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .users-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .users-table tr:last-child td { border-bottom: none; }
+    .role-badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .role-badge.owner  { background: #dcfce7; color: #15803d; }
+    .role-badge.staff  { background: #eff6ff; color: #2563eb; }
+    .toko-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .btn-danger {
+      background: none;
+      border: 1px solid #fecaca;
+      color: var(--red);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .btn-danger:hover { background: #fef2f2; }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .nav-tab {
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .2s, border-color .2s;
+    }
+    .nav-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+    @media (max-width: 600px) {
+      header { padding: 0 16px; }
+      main   { padding: 20px 16px; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .user-info-text { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p>Memuat...</p>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none;">
+  <div class="login-box">
+    <div class="login-brand">
+      <h1>HARMONI</h1>
+      <p>Indonesia — Portal Utama</p>
+    </div>
+    <div id="login-error"></div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="email@harmoni.id" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login">Masuk</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen">
+  <header>
+    <div class="header-brand">
+      <svg viewBox="0 0 100 100" width="30" height="30">
+        <circle cx="74" cy="20" r="11" fill="#FFFBD5"/>
+        <rect x="22" y="8" width="22" height="80" fill="#FFFBD5"/>
+        <path d="M44 88 L44 50 Q44 36 58 36 Q72 36 72 50 L72 88 Z" fill="#FFFBD5"/>
+      </svg>
+      <div class="header-brand-text">
+        <div class="brand-name">HARMONI</div>
+        <div class="brand-sub">Portal Utama</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="user-pill">
+        <div class="user-avatar" id="hdr-avatar">?</div>
+        <div class="user-info-text">
+          <div class="uname" id="hdr-nama">—</div>
+          <div class="urole" id="hdr-role">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" id="btn-kelola" style="display:none;" onclick="showUsers()">Kelola User</button>
+      <button class="btn-logout" id="btn-logout">Keluar</button>
+    </div>
+  </header>
+
+  <main id="main-dashboard">
+    <div class="welcome">
+      <h2>Selamat datang, <span id="welcome-nama">—</span> 👋</h2>
+      <p>Pilih sistem yang ingin kamu akses.</p>
+    </div>
+
+    <!-- HARMONI INDONESIA section -->
+    <div class="section" id="section-harmoni" style="display:none;">
+      <div class="section-header">
+        <span class="section-badge">Harmoni Indonesia</span>
+        <span class="section-title">Konveksi & Produksi</span>
+      </div>
+      <div class="apps-grid">
+        <a class="app-card" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
+          <div class="app-icon">✂️</div>
+          <div class="app-name">Sistem Penjahit</div>
+          <div class="app-desc">Kelola penjahit, harga, order, dan laporan produksi</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+        <a class="app-card" href="https://adhiitmuh.github.io/yh-sistem-produksi/" target="_blank">
+          <div class="app-icon">🏭</div>
+          <div class="app-name">Produksi YHK</div>
+          <div class="app-desc">Manajemen produksi konveksi dari bahan hingga barang jadi</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+        <a class="app-card" href="https://adhiitmuh.github.io/custom-order-harmoni/dashboard.html" target="_blank">
+          <div class="app-icon">📋</div>
+          <div class="app-name">Custom Order</div>
+          <div class="app-desc">Tracking pesanan custom, CRM pelanggan, dan laporan</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+        <a class="app-card" href="https://absensiharmoni-u4hz.vercel.app/" target="_blank">
+          <div class="app-icon">🕐</div>
+          <div class="app-name">Absensi & Gaji</div>
+          <div class="app-desc">Absensi karyawan dengan scan wajah dan pengelolaan gaji</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- HARMONIS SENTRAL section -->
+    <div class="section" id="section-sentral" style="display:none;">
+      <div class="section-header">
+        <span class="section-badge sentral">Harmonis Sentral</span>
+        <span class="section-title">Toko & Keuangan</span>
+      </div>
+      <div class="apps-grid">
+        <a class="app-card" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
+          <div class="app-icon">✂️</div>
+          <div class="app-name">Sistem Penjahit</div>
+          <div class="app-desc">Data harga dan penjahit untuk Harmonis Sentral</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+        <a class="app-card" id="card-keuangan" href="https://adhiitmuh.github.io/laporan-keuangan/" target="_blank">
+          <div class="app-icon">💰</div>
+          <div class="app-name">Laporan Keuangan</div>
+          <div class="app-desc">Kas, pembelian, supplier, piutang, dan laporan bulanan</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- USER MANAGEMENT -->
+  <main id="main-users" style="display:none; padding: 36px 32px; max-width: 900px; margin: 0 auto;">
+    <div class="page-header">
+      <button class="btn-back" onclick="showDashboard()">← Kembali</button>
+      <h2>Kelola Pengguna</h2>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('tab-list')">Daftar User</button>
+      <button class="nav-tab" onclick="switchTab('tab-add')">Tambah User</button>
+    </div>
+
+    <!-- List Users -->
+    <div id="tab-list">
+      <div class="card">
+        <h3>Semua Pengguna</h3>
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Nama</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Toko</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Add User -->
+    <div id="tab-add" style="display:none;">
+      <div class="card">
+        <h3>Tambah Pengguna Baru</h3>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label>Nama Lengkap</label>
+            <input type="text" id="new-nama" placeholder="Nama pengguna">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="new-email" placeholder="email@contoh.com">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="new-password" placeholder="Min. 6 karakter">
+          </div>
+          <div class="form-group">
+            <label>Role</label>
+            <select id="new-role">
+              <option value="staff">Staff</option>
+              <option value="owner">Owner</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px; max-width:300px;">
+          <label>Akses Toko</label>
+          <select id="new-toko">
+            <option value="harmoni_indonesia">Harmoni Indonesia</option>
+            <option value="harmonis_sentral">Harmonis Sentral</option>
+            <option value="semua">Semua Toko (Owner)</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
+        <div id="add-user-msg"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const firebaseConfig = {
+    apiKey:            'AIzaSyA9V5Lw40pDeAWeQKijYCkdvnag8AlEe74',
+    authDomain:        'harmoni-indonesia.firebaseapp.com',
+    projectId:         'harmoni-indonesia',
+    storageBucket:     'harmoni-indonesia.firebasestorage.app',
+    messagingSenderId: '825719884876',
+    appId:             '1:825719884876:web:a8fd78d382e0f98cf6b8e9',
+    measurementId:     'G-MS81TCG347'
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  // ── secondary app untuk buat user baru tanpa logout ──
+  const secondaryApp  = firebase.initializeApp(firebaseConfig, 'secondary');
+  const secondaryAuth = secondaryApp.auth();
+
+  let currentProfile = null;
+
+  function show(id)  { document.getElementById(id).style.display = ''; }
+  function hide(id)  { document.getElementById(id).style.display = 'none'; }
+  function block(id) { document.getElementById(id).style.display = 'flex'; }
+
+  // ── AUTH STATE ──
+  auth.onAuthStateChanged(async user => {
+    hide('loading-screen');
+    if (!user) {
+      block('login-screen');
+      return;
+    }
+    try {
+      const snap = await db.collection('users').doc(user.uid).get();
+      if (!snap.exists) {
+        // user belum ada di Firestore — buat otomatis sebagai owner (pertama kali)
+        const profile = { nama: user.email.split('@')[0], email: user.email, role: 'owner', toko: 'semua', aktif: true };
+        await db.collection('users').doc(user.uid).set(profile);
+        currentProfile = profile;
+      } else {
+        currentProfile = snap.data();
+      }
+      renderDashboard(currentProfile);
+    } catch (e) {
+      console.error(e);
+      auth.signOut();
+    }
+  });
+
+  function renderDashboard(profile) {
+    hide('login-screen');
+    show('dashboard-screen');
+
+    const inisial = (profile.nama || '?')[0].toUpperCase();
+    document.getElementById('hdr-avatar').textContent   = inisial;
+    document.getElementById('hdr-nama').textContent     = profile.nama;
+    document.getElementById('hdr-role').textContent     = profile.role === 'owner' ? 'Owner' : 'Staff';
+    document.getElementById('welcome-nama').textContent = profile.nama;
+
+    const isOwner = profile.role === 'owner';
+    const toko    = profile.toko;
+
+    if (isOwner) document.getElementById('btn-kelola').style.display = '';
+
+    // tampilkan section sesuai toko
+    if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
+    if (isOwner || toko === 'harmonis_sentral')  show('section-sentral');
+
+    // staff sentral: sembunyikan kartu laporan keuangan jika bukan aksesnya
+    // (laporan keuangan hanya untuk harmonis_sentral atau owner)
+    if (!isOwner && toko !== 'harmonis_sentral') {
+      const keu = document.getElementById('card-keuangan');
+      if (keu) keu.style.display = 'none';
+    }
+  }
+
+  // ── LOGIN ──
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl    = document.getElementById('login-error');
+    const btn      = document.getElementById('btn-login');
+
+    errEl.style.display = 'none';
+    if (!email || !password) { showError('Email dan password wajib diisi.'); return; }
+
+    btn.disabled   = true;
+    btn.textContent = 'Memuat...';
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+    } catch (e) {
+      showError(pesanError(e.code));
+      btn.disabled   = false;
+      btn.textContent = 'Masuk';
+    }
+
+    function showError(msg) {
+      errEl.textContent    = msg;
+      errEl.style.display  = 'block';
+    }
+  });
+
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-login').click();
+  });
+
+  document.getElementById('btn-logout').addEventListener('click', () => auth.signOut());
+
+  function pesanError(code) {
+    const map = {
+      'auth/user-not-found':    'Email tidak ditemukan.',
+      'auth/wrong-password':    'Password salah.',
+      'auth/invalid-email':     'Format email tidak valid.',
+      'auth/too-many-requests': 'Terlalu banyak percobaan. Coba lagi nanti.',
+      'auth/invalid-credential':'Email atau password salah.',
+    };
+    return map[code] || 'Terjadi kesalahan. Coba lagi.';
+  }
+
+  // ── NAVIGASI ──
+  function showDashboard() {
+    hide('main-users');
+    show('main-dashboard');
+  }
+
+  function showUsers() {
+    hide('main-dashboard');
+    show('main-users');
+    loadUsers();
+  }
+
+  function switchTab(tabId) {
+    ['tab-list', 'tab-add'].forEach(id => hide(id));
+    show(tabId);
+    document.querySelectorAll('.nav-tab').forEach((btn, i) => {
+      btn.classList.toggle('active', ['tab-list','tab-add'][i] === tabId);
+    });
+  }
+
+  // ── LOAD USERS ──
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
+    try {
+      const snap = await db.collection('users').get();
+      if (snap.empty) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
+        return;
+      }
+      const tokoLabel = { semua: 'Semua Toko', harmoni_indonesia: 'Harmoni Indonesia', harmonis_sentral: 'Harmonis Sentral' };
+      tbody.innerHTML = snap.docs.map(d => {
+        const u = d.data();
+        const isSelf = currentProfile && u.email === currentProfile.email;
+        return `<tr>
+          <td><strong>${u.nama || '—'}</strong></td>
+          <td style="color:#6b7280">${u.email || '—'}</td>
+          <td><span class="role-badge ${u.role}">${u.role}</span></td>
+          <td><div class="toko-label">${tokoLabel[u.toko] || u.toko || '—'}</div></td>
+          <td>${isSelf ? '' : `<button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`}</td>
+        </tr>`;
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Gagal memuat: ${e.message}</td></tr>`;
+    }
+  }
+
+  // ── TAMBAH USER ──
+  document.getElementById('btn-add-user').addEventListener('click', async () => {
+    const nama     = document.getElementById('new-nama').value.trim();
+    const email    = document.getElementById('new-email').value.trim();
+    const password = document.getElementById('new-password').value;
+    const role     = document.getElementById('new-role').value;
+    const toko     = document.getElementById('new-toko').value;
+    const msgEl    = document.getElementById('add-user-msg');
+    const btn      = document.getElementById('btn-add-user');
+
+    msgEl.style.display = 'none';
+    if (!nama || !email || !password) { showMsg('Semua field wajib diisi.', 'error'); return; }
+    if (password.length < 6)          { showMsg('Password minimal 6 karakter.', 'error'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+
+    try {
+      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      await db.collection('users').doc(cred.user.uid).set({ nama, email, role, toko, aktif: true });
+      await secondaryAuth.signOut();
+      showMsg(`Pengguna "${nama}" berhasil ditambahkan.`, 'success');
+      document.getElementById('new-nama').value = '';
+      document.getElementById('new-email').value = '';
+      document.getElementById('new-password').value = '';
+    } catch (e) {
+      showMsg(pesanError(e.code) || e.message, 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Tambah Pengguna';
+
+    function showMsg(msg, type) {
+      msgEl.textContent   = msg;
+      msgEl.className     = type;
+      msgEl.style.display = 'block';
+    }
+  });
+
+  // ── HAPUS USER ──
+  async function hapusUser(uid, nama) {
+    if (!confirm(`Hapus pengguna "${nama}"? Akun login mereka tidak langsung terhapus, hanya akses portal.`)) return;
+    try {
+      await db.collection('users').doc(uid).delete();
+      loadUsers();
+    } catch (e) {
+      alert('Gagal menghapus: ' + e.message);
+    }
+  }
+</script>
+</body>
+</html>
