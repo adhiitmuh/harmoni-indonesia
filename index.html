@@ -487,6 +487,19 @@
     }
     .btn-sm.save { background: var(--green); color: var(--cream); }
     .btn-sm.cancel { background: #f3f4f6; color: var(--text-muted); }
+    .btn-edit {
+      background: none;
+      border: 1px solid #bfdbfe;
+      color: #2563eb;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .btn-edit:hover { background: #eff6ff; }
     .btn-reset {
       background: none;
       border: 1px solid #d1d5db;
@@ -982,6 +995,7 @@
         const u = d.data();
         const isSelf = currentProfile && u.email === currentProfile.email;
         const actions = isSelf ? '' : `
+          <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit</button>
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
         const appBadges = u.role === 'owner'
@@ -1151,6 +1165,62 @@
     }
   }
 
+  // ── EDIT USER ──
+  let _editUid = null;
+
+  async function openEditModal(uid) {
+    try {
+      const snap = await db.collection('users').doc(uid).get();
+      if (!snap.exists) { alert('User tidak ditemukan.'); return; }
+      const u = snap.data();
+      _editUid = uid;
+
+      document.getElementById('edit-modal-info').innerHTML =
+        `<strong>${u.nama || ''}</strong>&nbsp;·&nbsp;<span style="color:#6b7280">${u.email || ''}</span>`;
+      document.getElementById('edit-nama').value = u.nama || '';
+      document.getElementById('edit-role').value = u.role || 'staff';
+
+      // Pre-isi akses app dari data existing
+      resetAppForm('edt');
+      APP_KEYS.forEach(key => {
+        const appData = (u.apps || {})[key];
+        if (appData && appData.akses) {
+          document.getElementById(`app-edt-${key}`).checked = true;
+          document.getElementById(`ai-edt-${key}`).classList.add('on');
+          document.getElementById(`role-edt-${key}`).disabled = false;
+          document.getElementById(`role-edt-${key}`).value = appData.role || '';
+          const tokoSel = document.getElementById(`toko-edt-${key}`);
+          if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
+        }
+      });
+
+      document.getElementById('edit-modal').style.display = 'flex';
+    } catch(e) { alert('Gagal membuka: ' + e.message); }
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    _editUid = null;
+  }
+
+  async function confirmEditModal() {
+    if (!_editUid) return;
+    const btn  = document.getElementById('btn-confirm-edit');
+    const nama = document.getElementById('edit-nama').value.trim();
+    const role = document.getElementById('edit-role').value;
+    if (!nama) { alert('Nama tidak boleh kosong.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      const apps = getAppsFromForm('edt');
+      await db.collection('users').doc(_editUid).update({ nama, role, apps });
+      closeEditModal();
+      loadUsers();
+      alert('Data pengguna berhasil diperbarui.');
+    } catch(e) { alert('Gagal menyimpan: ' + e.message); }
+    btn.disabled = false; btn.textContent = '💾 Simpan Perubahan';
+  }
+
   // ── TOGGLE SHOW/HIDE PASSWORD ──
   function togglePass() {
     const inp = document.getElementById('new-password');
@@ -1260,6 +1330,49 @@
     btn.textContent = 'Kirim Permintaan Daftar';
   });
 </script>
+<!-- MODAL EDIT USER -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <h3 style="margin:0 0 12px;color:#065652;font-size:16px;">✏️ Edit Pengguna</h3>
+    <div id="edit-modal-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#1d4ed8;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Nama Lengkap</label>
+        <input id="edit-nama" type="text" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Tipe Akun</label>
+        <select id="edit-role" style="width:100%;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+          <option value="staff">Staff</option>
+          <option value="owner">Owner</option>
+        </select>
+      </div>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin:0 0 12px;color:#374151;">Akses Aplikasi & Role:</p>
+    <div class="app-access-item" id="ai-edt-sistem_penjahit">
+      <label><input type="checkbox" id="app-edt-sistem_penjahit" onchange="toggleAppItem('edt','sistem_penjahit')"> ✂️ Sistem Penjahit Seragam</label>
+      <select id="role-edt-sistem_penjahit" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+      <select id="toko-edt-sistem_penjahit" disabled style="margin-top:4px"><option value="harmonis_sentral">Harmonis Sentral</option><option value="harmoni_indonesia">Harmoni Indonesia</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-yhk">
+      <label><input type="checkbox" id="app-edt-yhk" onchange="toggleAppItem('edt','yhk')"> 🏭 Sistem Penjahit Young Harmonis</label>
+      <select id="role-edt-yhk" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-custom_order">
+      <label><input type="checkbox" id="app-edt-custom_order" onchange="toggleAppItem('edt','custom_order')"> 📋 Harmoni Custom Order</label>
+      <select id="role-edt-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-laporan_keuangan">
+      <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
+      <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+      <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
+      <button id="btn-confirm-edit" onclick="confirmEditModal()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan Perubahan</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL APPROVAL AKUN -->
 <div id="approve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:14px;padding:28px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
