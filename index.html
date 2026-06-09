@@ -845,12 +845,14 @@
     try {
       const snap = await db.collection('users').doc(user.uid).get();
       if (!snap.exists) {
-        const profile = { nama: user.email.split('@')[0], email: user.email, role: 'owner', toko: 'semua', aktif: true };
-        await db.collection('users').doc(user.uid).set(profile);
-        currentProfile = profile;
-      } else {
-        currentProfile = snap.data();
+        block('login-screen');
+        const errEl = document.getElementById('login-error');
+        errEl.textContent = 'Akun tidak ditemukan. Hubungi admin untuk aktivasi.';
+        errEl.style.display = 'block';
+        auth.signOut();
+        return;
       }
+      currentProfile = snap.data();
       if (!currentProfile.aktif) {
         hide('loading-screen');
         block('login-screen');
@@ -1017,11 +1019,14 @@
     btn.disabled = true;
     btn.textContent = 'Menyimpan...';
 
+    let newCred = null;
     try {
       const apps = getAppsFromForm('new');
-      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      await db.collection('users').doc(cred.user.uid).set({ nama, email, role, apps, aktif: true });
+      newCred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      // Gunakan secondaryApp.firestore() agar write pakai auth user baru (bukan owner)
+      await secondaryApp.firestore().collection('users').doc(newCred.user.uid).set({ nama, email, role, apps, aktif: true });
       await secondaryAuth.signOut();
+      newCred = null;
       resetAppForm('new');
       showMsg(`Pengguna "${nama}" berhasil ditambahkan.`, 'success');
       // tampilkan password sekali untuk dicopy
@@ -1031,6 +1036,11 @@
       document.getElementById('new-email').value    = '';
       document.getElementById('new-password').value = '';
     } catch (e) {
+      // Jika Firestore write gagal, hapus akun Auth yang sudah terbuat agar tidak jadi zombie
+      if (newCred) {
+        try { await secondaryAuth.currentUser.delete(); } catch {}
+        try { await secondaryAuth.signOut(); } catch {}
+      }
       showMsg(pesanError(e.code) || e.message, 'error');
     }
 
@@ -1224,12 +1234,12 @@
 
     btn.disabled = true;
     btn.textContent = 'Mengirim...';
+    let regCred = null;
     try {
-      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      // Gunakan secondaryApp.firestore() karena secondaryAuth yang punya session user baru
-      // db (harmoni-auth) belum login saat member mendaftar, sehingga write-nya ditolak security rules
-      await secondaryApp.firestore().collection('users').doc(cred.user.uid).set({ nama, email, role: 'staff', toko, aktif: false });
+      regCred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+      await secondaryApp.firestore().collection('users').doc(regCred.user.uid).set({ nama, email, role: 'staff', toko, aktif: false });
       await secondaryAuth.signOut();
+      regCred = null;
       hide('form-register');
       show('form-login');
       errEl.style.background = '#f0fdf4';
@@ -1238,6 +1248,11 @@
       errEl.textContent = '✅ Permintaan dikirim! Tunggu persetujuan admin sebelum bisa login.';
       errEl.style.display = 'block';
     } catch (e) {
+      // Hapus akun Auth yang terlanjur dibuat jika Firestore write gagal
+      if (regCred) {
+        try { await secondaryAuth.currentUser.delete(); } catch {}
+        try { await secondaryAuth.signOut(); } catch {}
+      }
       errEl.textContent = pesanError(e.code) || e.message;
       errEl.style.display = 'block';
     }
