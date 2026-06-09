@@ -1088,15 +1088,40 @@
     }
   }
 
+  let _apvUid = null, _apvNama = null;
+
   async function approveUser(uid, nama) {
     try {
-      await db.collection('users').doc(uid).update({ aktif: true });
-      alert(`Akun "${nama}" sudah diaktifkan.`);
-      loadPending();
-      loadPendingCount();
-    } catch (e) {
-      alert('Gagal: ' + e.message);
-    }
+      const snap = await db.collection('users').doc(uid).get();
+      const u = snap.data() || {};
+      _apvUid = uid; _apvNama = nama;
+      document.getElementById('approve-modal-info').innerHTML =
+        `<strong>${u.nama || nama}</strong>&nbsp;·&nbsp;${u.email || ''}&nbsp;·&nbsp;Toko: ${u.toko === 'harmoni_indonesia' ? 'Harmoni Indonesia' : 'Harmonis Sentral'}`;
+      resetAppForm('apv');
+      // Pre-isi toko sistem_penjahit sesuai toko pendaftaran
+      const tokoSel = document.getElementById('toko-apv-sistem_penjahit');
+      if (tokoSel && u.toko) tokoSel.value = u.toko;
+      document.getElementById('approve-modal').style.display = 'flex';
+    } catch(e) { alert('Gagal membuka: ' + e.message); }
+  }
+
+  function closeApproveModal() {
+    document.getElementById('approve-modal').style.display = 'none';
+    _apvUid = null; _apvNama = null;
+  }
+
+  async function confirmApproveModal() {
+    if (!_apvUid) return;
+    const btn = document.getElementById('btn-confirm-approve');
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      const apps = getAppsFromForm('apv');
+      await db.collection('users').doc(_apvUid).update({ aktif: true, apps });
+      closeApproveModal();
+      alert(`Akun "${_apvNama}" sudah diaktifkan.`);
+      loadPending(); loadPendingCount(); loadUsers();
+    } catch(e) { alert('Gagal: ' + e.message); }
+    btn.disabled = false; btn.textContent = '✅ Setujui & Aktifkan';
   }
 
   // ── RESET PASSWORD VIA EMAIL ──
@@ -1195,7 +1220,9 @@
     btn.textContent = 'Mengirim...';
     try {
       const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      await db.collection('users').doc(cred.user.uid).set({ nama, email, role: 'staff', toko, aktif: false });
+      // Gunakan secondaryApp.firestore() karena secondaryAuth yang punya session user baru
+      // db (harmoni-auth) belum login saat member mendaftar, sehingga write-nya ditolak security rules
+      await secondaryApp.firestore().collection('users').doc(cred.user.uid).set({ nama, email, role: 'staff', toko, aktif: false });
       await secondaryAuth.signOut();
       hide('form-register');
       show('form-login');
@@ -1212,5 +1239,34 @@
     btn.textContent = 'Kirim Permintaan Daftar';
   });
 </script>
+<!-- MODAL APPROVAL AKUN -->
+<div id="approve-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <h3 style="margin:0 0 12px;color:#065652;font-size:16px;">✅ Setujui Pendaftaran</h3>
+    <div id="approve-modal-info" style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:13px;color:#166534;"></div>
+    <p style="font-size:13px;font-weight:600;margin:0 0 12px;color:#374151;">Pilih akses aplikasi yang diizinkan:</p>
+    <div class="app-access-item" id="ai-apv-sistem_penjahit">
+      <label><input type="checkbox" id="app-apv-sistem_penjahit" onchange="toggleAppItem('apv','sistem_penjahit')"> ✂️ Sistem Penjahit Seragam</label>
+      <select id="role-apv-sistem_penjahit" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+      <select id="toko-apv-sistem_penjahit" disabled style="margin-top:4px"><option value="harmonis_sentral">Harmonis Sentral</option><option value="harmoni_indonesia">Harmoni Indonesia</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-yhk">
+      <label><input type="checkbox" id="app-apv-yhk" onchange="toggleAppItem('apv','yhk')"> 🏭 Sistem Penjahit Young Harmonis</label>
+      <select id="role-apv-yhk" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-custom_order">
+      <label><input type="checkbox" id="app-apv-custom_order" onchange="toggleAppItem('apv','custom_order')"> 📋 Harmoni Custom Order</label>
+      <select id="role-apv-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-laporan_keuangan">
+      <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
+      <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+      <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
+      <button id="btn-confirm-approve" onclick="confirmApproveModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">✅ Setujui & Aktifkan</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
