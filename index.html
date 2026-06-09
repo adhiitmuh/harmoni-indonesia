@@ -909,7 +909,7 @@
     try {
       await auth.signInWithEmailAndPassword(email, password);
     } catch (e) {
-      showError(pesanError(e.code));
+      showError(pesanError(e.code) || e.message);
       btn.disabled   = false;
       btn.textContent = 'Masuk';
     }
@@ -928,13 +928,19 @@
 
   function pesanError(code) {
     const map = {
-      'auth/user-not-found':    'Email tidak ditemukan.',
-      'auth/wrong-password':    'Password salah.',
-      'auth/invalid-email':     'Format email tidak valid.',
-      'auth/too-many-requests': 'Terlalu banyak percobaan. Coba lagi nanti.',
-      'auth/invalid-credential':'Email atau password salah.',
+      'auth/user-not-found':          'Email tidak ditemukan.',
+      'auth/wrong-password':          'Password salah.',
+      'auth/invalid-email':           'Format email tidak valid.',
+      'auth/too-many-requests':       'Terlalu banyak percobaan. Coba lagi nanti.',
+      'auth/invalid-credential':      'Email atau password salah.',
+      'auth/email-already-in-use':    'Email sudah terdaftar. Gunakan email lain.',
+      'auth/weak-password':           'Password terlalu lemah. Minimal 6 karakter.',
+      'auth/operation-not-allowed':   'Metode login ini tidak diaktifkan.',
+      'auth/network-request-failed':  'Gagal terhubung ke server. Periksa koneksi internet.',
+      'auth/admin-restricted-operation': 'Operasi ini tidak diizinkan.',
+      'auth/popup-closed-by-user':    'Proses dibatalkan.',
     };
-    return map[code] || 'Terjadi kesalahan. Coba lagi.';
+    return map[code] || null;
   }
 
   // ── NAVIGASI ──
