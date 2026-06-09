@@ -804,7 +804,14 @@
             </div>
             <div class="app-access-item" id="ai-new-custom_order">
               <label><input type="checkbox" id="app-new-custom_order" onchange="toggleAppItem('new','custom_order')"> 📋 Harmoni Custom Order</label>
-              <select id="role-new-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+              <select id="role-new-custom_order" disabled onchange="toggleCODivisions('new')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+              <div id="div-new-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
+                <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-jersey"> Jersey</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-tailor"> Tailor</label>
+                </div>
+              </div>
             </div>
             <div class="app-access-item" id="ai-new-laporan_keuangan">
               <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
@@ -1200,6 +1207,15 @@
           document.getElementById(`role-edt-${key}`).value = appData.role || '';
           const tokoSel = document.getElementById(`toko-edt-${key}`);
           if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
+          // Pre-isi divisions untuk custom_order production
+          if (key === 'custom_order' && appData.role === 'production') {
+            const divs = appData.divisions || [];
+            CO_DIVISIONS.forEach(d => {
+              const el = document.getElementById(`divisi-edt-${d}`);
+              if (el) el.checked = divs.includes(d);
+            });
+            toggleCODivisions('edt');
+          }
         }
       });
 
@@ -1249,6 +1265,15 @@
   // ── APP ACCESS TOGGLE ──
   const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan'];
 
+  const CO_DIVISIONS = ['jersey', 'tailor'];
+
+  function toggleCODivisions(prefix) {
+    const checked = document.getElementById(`app-${prefix}-custom_order`).checked;
+    const role    = document.getElementById(`role-${prefix}-custom_order`).value;
+    const divEl   = document.getElementById(`div-${prefix}-custom_order`);
+    if (divEl) divEl.style.display = (checked && role === 'production') ? '' : 'none';
+  }
+
   function toggleAppItem(prefix, key) {
     const checked = document.getElementById(`app-${prefix}-${key}`).checked;
     const item    = document.getElementById(`ai-${prefix}-${key}`);
@@ -1258,6 +1283,8 @@
     // Toko selector khusus sistem_penjahit
     const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
     if (tokoSel) tokoSel.disabled = !checked;
+    // Divisi khusus custom_order
+    if (key === 'custom_order') toggleCODivisions(prefix);
   }
 
   function getAppsFromForm(prefix) {
@@ -1269,6 +1296,12 @@
       };
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) entry.toko = tokoSel.value;
+      // Kumpulkan divisions jika role production
+      if (key === 'custom_order' && entry.role === 'production' && entry.akses) {
+        entry.divisions = CO_DIVISIONS.filter(d =>
+          document.getElementById(`divisi-${prefix}-${d}`).checked
+        );
+      }
       apps[key] = entry;
     });
     return apps;
@@ -1281,6 +1314,15 @@
       document.getElementById(`role-${prefix}-${key}`).disabled = true;
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) tokoSel.disabled = true;
+      // Reset divisi custom_order
+      if (key === 'custom_order') {
+        CO_DIVISIONS.forEach(d => {
+          const el = document.getElementById(`divisi-${prefix}-${d}`);
+          if (el) el.checked = false;
+        });
+        const divEl = document.getElementById(`div-${prefix}-custom_order`);
+        if (divEl) divEl.style.display = 'none';
+      }
     });
   }
 
@@ -1369,7 +1411,14 @@
     </div>
     <div class="app-access-item" id="ai-edt-custom_order">
       <label><input type="checkbox" id="app-edt-custom_order" onchange="toggleAppItem('edt','custom_order')"> 📋 Harmoni Custom Order</label>
-      <select id="role-edt-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <select id="role-edt-custom_order" disabled onchange="toggleCODivisions('edt')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <div id="div-edt-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
+        <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-jersey"> Jersey</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-tailor"> Tailor</label>
+        </div>
+      </div>
     </div>
     <div class="app-access-item" id="ai-edt-laporan_keuangan">
       <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
@@ -1399,7 +1448,14 @@
     </div>
     <div class="app-access-item" id="ai-apv-custom_order">
       <label><input type="checkbox" id="app-apv-custom_order" onchange="toggleAppItem('apv','custom_order')"> 📋 Harmoni Custom Order</label>
-      <select id="role-apv-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <select id="role-apv-custom_order" disabled onchange="toggleCODivisions('apv')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <div id="div-apv-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
+        <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-jersey"> Jersey</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-tailor"> Tailor</label>
+        </div>
+      </div>
     </div>
     <div class="app-access-item" id="ai-apv-laporan_keuangan">
       <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
