@@ -581,6 +581,10 @@
         <label>Password</label>
         <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin-bottom:14px;cursor:pointer;user-select:none;">
+        <input type="checkbox" id="login-remember" checked style="width:16px;height:16px;cursor:pointer;">
+        Ingat saya di perangkat ini
+      </label>
       <button class="btn-login" id="btn-login">Masuk</button>
       <div style="text-align:center;margin-top:14px;">
         <a href="#" id="link-to-register" style="font-size:13px;color:#065652;">Belum punya akun? Daftar di sini</a>
@@ -922,6 +926,11 @@
     btn.disabled   = true;
     btn.textContent = 'Memuat...';
     try {
+      // Ingat saya → LOCAL (sesi tetap setelah browser ditutup)
+      // Tidak dicentang → SESSION (otomatis logout saat tab/browser ditutup)
+      const remember = document.getElementById('login-remember').checked;
+      const P = firebase.auth.Auth.Persistence;
+      await auth.setPersistence(remember ? P.LOCAL : P.SESSION);
       await auth.signInWithEmailAndPassword(email, password);
     } catch (e) {
       showError(pesanError(e.code) || e.message);
