@@ -799,6 +799,10 @@
               <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
               <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
             </div>
+            <div class="app-access-item" id="ai-new-harmoni_analitik">
+              <label><input type="checkbox" id="app-new-harmoni_analitik" onchange="toggleAppItem('new','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+              <select id="role-new-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+            </div>
           </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
@@ -967,6 +971,8 @@
   }
 
   // ── LOAD USERS ──
+  const _usersCache = {};
+
   async function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
@@ -976,11 +982,13 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
+        _usersCache[d.id] = u;
         const isSelf = currentProfile && u.email === currentProfile.email;
         const actions = isSelf ? '' : `
+          <button class="btn-sm save" onclick="openEditModal('${d.id}')">Edit Akses</button>
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
         const appBadges = u.role === 'owner'
@@ -1159,7 +1167,7 @@
   }
 
   // ── APP ACCESS TOGGLE ──
-  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan'];
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik'];
 
   function toggleAppItem(prefix, key) {
     const checked = document.getElementById(`app-${prefix}-${key}`).checked;
@@ -1194,6 +1202,59 @@
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) tokoSel.disabled = true;
     });
+  }
+
+  // ── EDIT AKSES USER ──
+  let _editUid = null;
+
+  function openEditModal(uid) {
+    _editUid = uid;
+    const u = _usersCache[uid];
+    if (!u) return;
+    const infoEl = document.getElementById('edit-modal-info');
+    infoEl.textContent = `${u.nama || '—'} (${u.email || '—'})`;
+    document.getElementById('edit-modal-msg').style.display = 'none';
+
+    resetAppForm('edt');
+
+    if (u.role !== 'owner' && u.apps) {
+      APP_KEYS.forEach(key => {
+        const app = u.apps[key];
+        if (!app || !app.akses) return;
+        const cb = document.getElementById(`app-edt-${key}`);
+        if (cb) { cb.checked = true; toggleAppItem('edt', key); }
+        const roleSel = document.getElementById(`role-edt-${key}`);
+        if (roleSel && app.role) roleSel.value = app.role;
+        const tokoSel = document.getElementById(`toko-edt-${key}`);
+        if (tokoSel && app.toko) tokoSel.value = app.toko;
+      });
+    }
+
+    document.getElementById('edit-modal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+    _editUid = null;
+  }
+
+  async function saveEditModal() {
+    if (!_editUid) return;
+    const btn = document.getElementById('btn-confirm-edit');
+    const msgEl = document.getElementById('edit-modal-msg');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+    try {
+      const apps = getAppsFromForm('edt');
+      await db.collection('users').doc(_editUid).update({ apps });
+      closeEditModal();
+      loadUsers();
+    } catch (e) {
+      msgEl.textContent = 'Gagal menyimpan: ' + e.message;
+      msgEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = '💾 Simpan';
   }
 
   // ── TOGGLE LOGIN / REGISTER FORM ──
@@ -1269,9 +1330,48 @@
       <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
       <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
     </div>
+    <div class="app-access-item" id="ai-apv-harmoni_analitik">
+      <label><input type="checkbox" id="app-apv-harmoni_analitik" onchange="toggleAppItem('apv','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+      <select id="role-apv-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-approve" onclick="confirmApproveModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">✅ Setujui & Aktifkan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT AKSES USER -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <h3 style="margin:0 0 12px;color:#065652;font-size:16px;">✏️ Edit Akses Pengguna</h3>
+    <div id="edit-modal-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:13px;color:#1e40af;"></div>
+    <p style="font-size:13px;font-weight:600;margin:0 0 12px;color:#374151;">Pilih akses aplikasi yang diizinkan:</p>
+    <div class="app-access-item" id="ai-edt-sistem_penjahit">
+      <label><input type="checkbox" id="app-edt-sistem_penjahit" onchange="toggleAppItem('edt','sistem_penjahit')"> ✂️ Sistem Penjahit Seragam</label>
+      <select id="role-edt-sistem_penjahit" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+      <select id="toko-edt-sistem_penjahit" disabled style="margin-top:4px"><option value="harmonis_sentral">Harmonis Sentral</option><option value="harmoni_indonesia">Harmoni Indonesia</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-yhk">
+      <label><input type="checkbox" id="app-edt-yhk" onchange="toggleAppItem('edt','yhk')"> 🏭 Sistem Penjahit Young Harmonis</label>
+      <select id="role-edt-yhk" disabled><option value="staff">Staff</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-custom_order">
+      <label><input type="checkbox" id="app-edt-custom_order" onchange="toggleAppItem('edt','custom_order')"> 📋 Harmoni Custom Order</label>
+      <select id="role-edt-custom_order" disabled><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-laporan_keuangan">
+      <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
+      <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+    </div>
+    <div class="app-access-item" id="ai-edt-harmoni_analitik">
+      <label><input type="checkbox" id="app-edt-harmoni_analitik" onchange="toggleAppItem('edt','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+      <select id="role-edt-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    </div>
+    <div id="edit-modal-msg" style="display:none;margin-top:12px;font-size:13px;color:red;"></div>
+    <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
+      <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
+      <button id="btn-confirm-edit" onclick="saveEditModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan</button>
     </div>
   </div>
 </div>
