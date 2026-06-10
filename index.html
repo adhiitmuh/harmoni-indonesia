@@ -687,6 +687,12 @@
           <div class="app-desc">Absensi karyawan dengan scan wajah dan pengelolaan gaji</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-analitik" href="https://adhiitmuh.github.io/harmoni-analitik-penjualan/" target="_blank" style="display:none;">
+          <div class="app-icon">📊</div>
+          <div class="app-name">Harmoni Analitik Penjualan</div>
+          <div class="app-desc">Analisis penjualan, tren, dan performa bisnis Harmoni Indonesia</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
       </div>
     </div>
 
@@ -817,6 +823,10 @@
               <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
               <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
             </div>
+            <div class="app-access-item" id="ai-new-harmoni_analitik">
+              <label><input type="checkbox" id="app-new-harmoni_analitik" onchange="toggleAppItem('new','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+              <select id="role-new-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+            </div>
           </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
@@ -907,6 +917,7 @@
     const toko    = profile.toko;
 
     if (isOwner) document.getElementById('btn-kelola').style.display = '';
+    if (isOwner) document.getElementById('card-analitik').style.display = '';
 
     // tampilkan section sesuai toko
     if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
@@ -997,6 +1008,8 @@
   }
 
   // ── LOAD USERS ──
+  const _usersCache = {};
+
   async function loadUsers() {
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
@@ -1006,12 +1019,13 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
+        _usersCache[d.id] = u;
         const isSelf = currentProfile && u.email === currentProfile.email;
         const actions = isSelf ? '' : `
-          <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit</button>
+          <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit Akses</button>
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
         const appBadges = u.role === 'owner'
@@ -1263,7 +1277,7 @@
   }
 
   // ── APP ACCESS TOGGLE ──
-  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan'];
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik'];
 
   const CO_DIVISIONS = ['jersey', 'tailor'];
 
@@ -1424,6 +1438,10 @@
       <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
       <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
     </div>
+    <div class="app-access-item" id="ai-edt-harmoni_analitik">
+      <label><input type="checkbox" id="app-edt-harmoni_analitik" onchange="toggleAppItem('edt','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+      <select id="role-edt-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-edit" onclick="confirmEditModal()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan Perubahan</button>
@@ -1461,11 +1479,16 @@
       <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
       <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
     </div>
+    <div class="app-access-item" id="ai-apv-harmoni_analitik">
+      <label><input type="checkbox" id="app-apv-harmoni_analitik" onchange="toggleAppItem('apv','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
+      <select id="role-apv-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-approve" onclick="confirmApproveModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">✅ Setujui & Aktifkan</button>
     </div>
   </div>
 </div>
+
 </body>
 </html>
