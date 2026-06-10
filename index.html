@@ -863,6 +863,10 @@
               <label><input type="checkbox" id="app-new-harmoni_stok" onchange="toggleAppItem('new','harmoni_stok')"> 📦 Stok Manager</label>
               <select id="role-new-harmoni_stok" disabled><option value="staff">Staff</option></select>
             </div>
+            <div class="app-access-item" id="ai-new-hitungbordir">
+              <label><input type="checkbox" id="app-new-hitungbordir" onchange="toggleAppItem('new','hitungbordir')"> 🪡 Hitung Bordir</label>
+              <select id="role-new-hitungbordir" disabled><option value="staff">Staff</option></select>
+            </div>
           </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
@@ -1079,7 +1083,7 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Hitung Bordir' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         _usersCache[d.id] = u;
@@ -1365,7 +1369,7 @@
   }
 
   // ── APP ACCESS TOGGLE ──
-  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok'];
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok', 'hitungbordir'];
 
   const CO_DIVISIONS = ['bordir','butik','jersey','jilbab','sablon','konveksi','medali-pin','papan-nama','pin-fiber','sewa-kostum','tailor'];
 
@@ -1582,6 +1586,10 @@
       <label><input type="checkbox" id="app-edt-harmoni_stok" onchange="toggleAppItem('edt','harmoni_stok')"> 📦 Stok Manager</label>
       <select id="role-edt-harmoni_stok" disabled><option value="staff">Staff</option></select>
     </div>
+    <div class="app-access-item" id="ai-edt-hitungbordir">
+      <label><input type="checkbox" id="app-edt-hitungbordir" onchange="toggleAppItem('edt','hitungbordir')"> 🪡 Hitung Bordir</label>
+      <select id="role-edt-hitungbordir" disabled><option value="staff">Staff</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-edit" onclick="confirmEditModal()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan Perubahan</button>
@@ -1638,6 +1646,10 @@
     <div class="app-access-item" id="ai-apv-harmoni_stok">
       <label><input type="checkbox" id="app-apv-harmoni_stok" onchange="toggleAppItem('apv','harmoni_stok')"> 📦 Stok Manager</label>
       <select id="role-apv-harmoni_stok" disabled><option value="staff">Staff</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-hitungbordir">
+      <label><input type="checkbox" id="app-apv-hitungbordir" onchange="toggleAppItem('apv','hitungbordir')"> 🪡 Hitung Bordir</label>
+      <select id="role-apv-hitungbordir" disabled><option value="staff">Staff</option></select>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
