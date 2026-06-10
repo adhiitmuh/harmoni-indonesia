@@ -8,6 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-functions-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -888,6 +889,9 @@
   const secondaryApp  = firebase.initializeApp(firebaseConfig, 'secondary');
   const secondaryAuth = secondaryApp.auth();
 
+  const functions        = firebase.app('harmoni-auth').functions('asia-southeast1');
+  const fnHapusPermanen  = functions.httpsCallable('hapusUserPermanen');
+
   let currentProfile = null;
 
   // Format username yang diizinkan (huruf kecil, angka, titik, strip, underscore)
@@ -1072,7 +1076,7 @@
         const actions = isSelf ? '' : `
           <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit Akses</button>
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
-          <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus</button>`;
+          <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus Permanen</button>`;
         const appBadges = u.role === 'owner'
           ? '<span class="app-badge">Semua App</span>'
           : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) => {
@@ -1153,14 +1157,16 @@
     }
   });
 
-  // ── HAPUS USER ──
+  // ── HAPUS USER PERMANEN (Auth + Firestore) ──
   async function hapusUser(uid, nama) {
-    if (!confirm(`Hapus pengguna "${nama}"? Akun login mereka tidak langsung terhapus, hanya akses portal.`)) return;
+    if (!confirm(`Hapus permanen "${nama}"?\n\nAkun login (email & password) dan semua data portal mereka akan dihapus sepenuhnya. Tindakan ini tidak bisa dibatalkan.`)) return;
     try {
-      await db.collection('users').doc(uid).delete();
+      await fnHapusPermanen({ uid });
       loadUsers();
+      loadPendingCount();
     } catch (e) {
-      alert('Gagal menghapus: ' + e.message);
+      const msg = e.details || e.message || 'Terjadi kesalahan.';
+      alert('Gagal menghapus: ' + msg);
     }
   }
 
