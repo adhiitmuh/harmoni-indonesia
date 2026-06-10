@@ -824,6 +824,9 @@
             <div class="app-access-item" id="ai-new-custom_order">
               <label><input type="checkbox" id="app-new-custom_order" onchange="toggleAppItem('new','custom_order')"> 📋 Harmoni Custom Order</label>
               <select id="role-new-custom_order" disabled onchange="toggleCODivisions('new')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+              <label id="rangkap-new-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;cursor:pointer;">
+                <input type="checkbox" id="rangkap-new-custom_order" onchange="toggleCODivisions('new')"> 🏭 Merangkap Production
+              </label>
               <div id="div-new-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
                 <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1074,7 +1077,8 @@
           ? '<span class="app-badge">Semua App</span>'
           : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) => {
               const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
-              return `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}${tokoInfo}</span>`;
+              const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production' : '';
+              return `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}${rangkapInfo}${tokoInfo}</span>`;
             }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
         return `<tr>
           <td><strong>${u.nama || '—'}</strong></td>
@@ -1273,8 +1277,10 @@
           document.getElementById(`role-edt-${key}`).value = appData.role || '';
           const tokoSel = document.getElementById(`toko-edt-${key}`);
           if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
-          // Pre-isi divisions untuk custom_order production
-          if (key === 'custom_order' && appData.role === 'production') {
+          // Pre-isi merangkap production & divisions untuk custom_order
+          if (key === 'custom_order') {
+            const rangkapEl = document.getElementById('rangkap-edt-custom_order');
+            if (rangkapEl) rangkapEl.checked = !!appData.merangkapProduction;
             const divs = appData.divisions || [];
             CO_DIVISIONS.forEach(d => {
               const el = document.getElementById(`divisi-edt-${d}`);
@@ -1347,10 +1353,16 @@
   const CO_DIVISIONS = ['bordir','butik','jersey','jilbab','sablon','konveksi','medali-pin','papan-nama','pin-fiber','sewa-kostum','tailor'];
 
   function toggleCODivisions(prefix) {
-    const checked = document.getElementById(`app-${prefix}-custom_order`).checked;
-    const role    = document.getElementById(`role-${prefix}-custom_order`).value;
-    const divEl   = document.getElementById(`div-${prefix}-custom_order`);
-    if (divEl) divEl.style.display = (checked && role === 'production') ? '' : 'none';
+    const checked   = document.getElementById(`app-${prefix}-custom_order`).checked;
+    const role      = document.getElementById(`role-${prefix}-custom_order`).value;
+    const divEl     = document.getElementById(`div-${prefix}-custom_order`);
+    const wrapEl    = document.getElementById(`rangkap-${prefix}-wrap`);
+    const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
+    // Checkbox "Merangkap Production" hanya relevan jika role utamanya bukan production
+    const showRangkap = checked && role !== 'production';
+    if (wrapEl) wrapEl.style.display = showRangkap ? 'flex' : 'none';
+    const merangkap = showRangkap && rangkapEl && rangkapEl.checked;
+    if (divEl) divEl.style.display = (checked && (role === 'production' || merangkap)) ? '' : 'none';
   }
 
   function toggleAppItem(prefix, key) {
@@ -1375,11 +1387,16 @@
       };
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) entry.toko = tokoSel.value;
-      // Kumpulkan divisions jika role production
-      if (key === 'custom_order' && entry.role === 'production' && entry.akses) {
-        entry.divisions = CO_DIVISIONS.filter(d =>
-          document.getElementById(`divisi-${prefix}-${d}`).checked
-        );
+      // Kumpulkan divisions jika role production atau merangkap production
+      if (key === 'custom_order' && entry.akses) {
+        const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
+        const merangkap = entry.role !== 'production' && rangkapEl && rangkapEl.checked;
+        if (merangkap) entry.merangkapProduction = true;
+        if (entry.role === 'production' || merangkap) {
+          entry.divisions = CO_DIVISIONS.filter(d =>
+            document.getElementById(`divisi-${prefix}-${d}`).checked
+          );
+        }
       }
       apps[key] = entry;
     });
@@ -1393,7 +1410,7 @@
       document.getElementById(`role-${prefix}-${key}`).disabled = true;
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) tokoSel.disabled = true;
-      // Reset divisi custom_order
+      // Reset divisi & merangkap production custom_order
       if (key === 'custom_order') {
         CO_DIVISIONS.forEach(d => {
           const el = document.getElementById(`divisi-${prefix}-${d}`);
@@ -1401,6 +1418,10 @@
         });
         const divEl = document.getElementById(`div-${prefix}-custom_order`);
         if (divEl) divEl.style.display = 'none';
+        const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
+        if (rangkapEl) rangkapEl.checked = false;
+        const wrapEl = document.getElementById(`rangkap-${prefix}-wrap`);
+        if (wrapEl) wrapEl.style.display = 'none';
       }
     });
   }
@@ -1512,6 +1533,9 @@
     <div class="app-access-item" id="ai-edt-custom_order">
       <label><input type="checkbox" id="app-edt-custom_order" onchange="toggleAppItem('edt','custom_order')"> 📋 Harmoni Custom Order</label>
       <select id="role-edt-custom_order" disabled onchange="toggleCODivisions('edt')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <label id="rangkap-edt-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="rangkap-edt-custom_order" onchange="toggleCODivisions('edt')"> 🏭 Merangkap Production
+      </label>
       <div id="div-edt-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
         <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1562,6 +1586,9 @@
     <div class="app-access-item" id="ai-apv-custom_order">
       <label><input type="checkbox" id="app-apv-custom_order" onchange="toggleAppItem('apv','custom_order')"> 📋 Harmoni Custom Order</label>
       <select id="role-apv-custom_order" disabled onchange="toggleCODivisions('apv')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <label id="rangkap-apv-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" id="rangkap-apv-custom_order" onchange="toggleCODivisions('apv')"> 🏭 Merangkap Production
+      </label>
       <div id="div-apv-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
         <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
