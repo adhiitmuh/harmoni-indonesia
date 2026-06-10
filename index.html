@@ -698,6 +698,12 @@
           <div class="app-desc">Analisis penjualan, tren, dan performa bisnis Harmoni Indonesia</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-stok" href="https://adhiitmuh.github.io/harmoni-stok-manager/" target="_blank" style="display:none;">
+          <div class="app-icon">📦</div>
+          <div class="app-name">Harmoni Stok Manager</div>
+          <div class="app-desc">Input nota, isi HPP, dan rekonsiliasi stok gudang & toko</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
       </div>
     </div>
 
@@ -853,6 +859,10 @@
               <label><input type="checkbox" id="app-new-harmoni_analitik" onchange="toggleAppItem('new','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
               <select id="role-new-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
             </div>
+            <div class="app-access-item" id="ai-new-harmoni_stok">
+              <label><input type="checkbox" id="app-new-harmoni_stok" onchange="toggleAppItem('new','harmoni_stok')"> 📦 Stok Manager</label>
+              <select id="role-new-harmoni_stok" disabled><option value="staff">Staff</option></select>
+            </div>
           </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
@@ -950,6 +960,7 @@
 
     if (isOwner) document.getElementById('btn-kelola').style.display = '';
     if (isOwner) document.getElementById('card-analitik').style.display = '';
+    if (isOwner) document.getElementById('card-stok').style.display = '';
 
     // tampilkan section sesuai toko
     if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
@@ -1068,7 +1079,7 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         _usersCache[d.id] = u;
@@ -1354,7 +1365,7 @@
   }
 
   // ── APP ACCESS TOGGLE ──
-  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik'];
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok'];
 
   const CO_DIVISIONS = ['bordir','butik','jersey','jilbab','sablon','konveksi','medali-pin','papan-nama','pin-fiber','sewa-kostum','tailor'];
 
@@ -1567,6 +1578,10 @@
       <label><input type="checkbox" id="app-edt-harmoni_analitik" onchange="toggleAppItem('edt','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
       <select id="role-edt-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
     </div>
+    <div class="app-access-item" id="ai-edt-harmoni_stok">
+      <label><input type="checkbox" id="app-edt-harmoni_stok" onchange="toggleAppItem('edt','harmoni_stok')"> 📦 Stok Manager</label>
+      <select id="role-edt-harmoni_stok" disabled><option value="staff">Staff</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-edit" onclick="confirmEditModal()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan Perubahan</button>
@@ -1619,6 +1634,10 @@
     <div class="app-access-item" id="ai-apv-harmoni_analitik">
       <label><input type="checkbox" id="app-apv-harmoni_analitik" onchange="toggleAppItem('apv','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
       <select id="role-apv-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-harmoni_stok">
+      <label><input type="checkbox" id="app-apv-harmoni_stok" onchange="toggleAppItem('apv','harmoni_stok')"> 📦 Stok Manager</label>
+      <select id="role-apv-harmoni_stok" disabled><option value="staff">Staff</option></select>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
