@@ -670,6 +670,12 @@
           <div class="app-desc">Absensi karyawan dengan scan wajah dan pengelolaan gaji</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-analitik" href="https://adhiitmuh.github.io/harmoni-analitik-penjualan/" target="_blank" style="display:none;">
+          <div class="app-icon">📊</div>
+          <div class="app-name">Harmoni Analitik Penjualan</div>
+          <div class="app-desc">Analisis penjualan, tren, dan performa bisnis Harmoni Indonesia</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
       </div>
     </div>
 
@@ -881,6 +887,7 @@
     const toko    = profile.toko;
 
     if (isOwner) document.getElementById('btn-kelola').style.display = '';
+    if (isOwner) document.getElementById('card-analitik').style.display = '';
 
     // tampilkan section sesuai toko
     if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
