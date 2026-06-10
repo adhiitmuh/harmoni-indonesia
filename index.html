@@ -813,9 +813,18 @@
               <select id="role-new-custom_order" disabled onchange="toggleCODivisions('new')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
               <div id="div-new-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
                 <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
-                <div style="display:flex;gap:14px;flex-wrap:wrap;">
-                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-jersey"> Jersey</label>
-                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-tailor"> Tailor</label>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-bordir"> 🪡 Bordir</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-butik"> 👗 Butik</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-jersey"> ⚽ Jersey</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-jilbab"> 🧕 Jilbab</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-sablon"> 🖨️ Sablon</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-konveksi"> 👕 Konveksi</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-medali-pin"> 🏅 Medali & Pin</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-papan-nama"> 🏷️ Papan Nama</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-pin-fiber"> 📌 Pin Fiber</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-sewa-kostum"> 🎭 Sewa Kostum</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-tailor"> ✂️ Tailor</label>
                 </div>
               </div>
             </div>
@@ -1279,7 +1288,7 @@
   // ── APP ACCESS TOGGLE ──
   const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik'];
 
-  const CO_DIVISIONS = ['jersey', 'tailor'];
+  const CO_DIVISIONS = ['bordir','butik','jersey','jilbab','sablon','konveksi','medali-pin','papan-nama','pin-fiber','sewa-kostum','tailor'];
 
   function toggleCODivisions(prefix) {
     const checked = document.getElementById(`app-${prefix}-custom_order`).checked;
@@ -1428,9 +1437,18 @@
       <select id="role-edt-custom_order" disabled onchange="toggleCODivisions('edt')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
       <div id="div-edt-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
         <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-jersey"> Jersey</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-tailor"> Tailor</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-bordir"> 🪡 Bordir</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-butik"> 👗 Butik</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-jersey"> ⚽ Jersey</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-jilbab"> 🧕 Jilbab</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-sablon"> 🖨️ Sablon</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-konveksi"> 👕 Konveksi</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-medali-pin"> 🏅 Medali & Pin</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-papan-nama"> 🏷️ Papan Nama</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-pin-fiber"> 📌 Pin Fiber</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-sewa-kostum"> 🎭 Sewa Kostum</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-tailor"> ✂️ Tailor</label>
         </div>
       </div>
     </div>
@@ -1469,9 +1487,18 @@
       <select id="role-apv-custom_order" disabled onchange="toggleCODivisions('apv')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
       <div id="div-apv-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
         <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;">
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-jersey"> Jersey</label>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-tailor"> Tailor</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-bordir"> 🪡 Bordir</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-butik"> 👗 Butik</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-jersey"> ⚽ Jersey</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-jilbab"> 🧕 Jilbab</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-sablon"> 🖨️ Sablon</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-konveksi"> 👕 Konveksi</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-medali-pin"> 🏅 Medali & Pin</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-papan-nama"> 🏷️ Papan Nama</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-pin-fiber"> 📌 Pin Fiber</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-sewa-kostum"> 🎭 Sewa Kostum</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-tailor"> ✂️ Tailor</label>
         </div>
       </div>
     </div>
