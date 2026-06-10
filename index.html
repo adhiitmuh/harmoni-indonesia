@@ -704,6 +704,12 @@
           <div class="app-desc">Input nota, isi HPP, dan rekonsiliasi stok gudang & toko</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-bordir" href="https://adhiitmuh.github.io/Hitungbordir/" target="_blank" style="display:none;">
+          <div class="app-icon">🪡</div>
+          <div class="app-name">Harmoni Bordir</div>
+          <div class="app-desc">Kalkulasi harga dan biaya bordir per order</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
       </div>
     </div>
 
@@ -864,7 +870,7 @@
               <select id="role-new-harmoni_stok" disabled><option value="staff">Staff</option></select>
             </div>
             <div class="app-access-item" id="ai-new-hitungbordir">
-              <label><input type="checkbox" id="app-new-hitungbordir" onchange="toggleAppItem('new','hitungbordir')"> 🪡 Hitung Bordir</label>
+              <label><input type="checkbox" id="app-new-hitungbordir" onchange="toggleAppItem('new','hitungbordir')"> 🪡 Harmoni Bordir</label>
               <select id="role-new-hitungbordir" disabled><option value="staff">Staff</option></select>
             </div>
           </div>
@@ -965,6 +971,7 @@
     if (isOwner) document.getElementById('btn-kelola').style.display = '';
     if (isOwner) document.getElementById('card-analitik').style.display = '';
     if (isOwner) document.getElementById('card-stok').style.display = '';
+    if (isOwner) document.getElementById('card-bordir').style.display = '';
 
     // tampilkan section sesuai toko
     if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
@@ -1083,7 +1090,7 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Hitung Bordir' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Harmoni Bordir' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         _usersCache[d.id] = u;
@@ -1587,7 +1594,7 @@
       <select id="role-edt-harmoni_stok" disabled><option value="staff">Staff</option></select>
     </div>
     <div class="app-access-item" id="ai-edt-hitungbordir">
-      <label><input type="checkbox" id="app-edt-hitungbordir" onchange="toggleAppItem('edt','hitungbordir')"> 🪡 Hitung Bordir</label>
+      <label><input type="checkbox" id="app-edt-hitungbordir" onchange="toggleAppItem('edt','hitungbordir')"> 🪡 Harmoni Bordir</label>
       <select id="role-edt-hitungbordir" disabled><option value="staff">Staff</option></select>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
@@ -1648,7 +1655,7 @@
       <select id="role-apv-harmoni_stok" disabled><option value="staff">Staff</option></select>
     </div>
     <div class="app-access-item" id="ai-apv-hitungbordir">
-      <label><input type="checkbox" id="app-apv-hitungbordir" onchange="toggleAppItem('apv','hitungbordir')"> 🪡 Hitung Bordir</label>
+      <label><input type="checkbox" id="app-apv-hitungbordir" onchange="toggleAppItem('apv','hitungbordir')"> 🪡 Harmoni Bordir</label>
       <select id="role-apv-hitungbordir" disabled><option value="staff">Staff</option></select>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
