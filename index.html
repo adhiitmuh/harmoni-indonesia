@@ -710,6 +710,12 @@
           <div class="app-desc">Kalkulasi harga dan biaya bordir per order</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-barcode" href="https://adhiitmuh.github.io/harmoni-barcode/" target="_blank" style="display:none;">
+          <div class="app-icon">🖨️</div>
+          <div class="app-name">Harmoni Barcode</div>
+          <div class="app-desc">Cetak barcode label produk Harmoni</div>
+          <div class="app-arrow">Buka →</div>
+        </a>
       </div>
     </div>
 
@@ -873,6 +879,10 @@
               <label><input type="checkbox" id="app-new-hitungbordir" onchange="toggleAppItem('new','hitungbordir')"> 🪡 Harmoni Bordir</label>
               <select id="role-new-hitungbordir" disabled><option value="staff">Staff</option></select>
             </div>
+            <div class="app-access-item" id="ai-new-barcode_printer">
+              <label><input type="checkbox" id="app-new-barcode_printer" onchange="toggleAppItem('new','barcode_printer')"> 🖨️ Harmoni Barcode</label>
+              <select id="role-new-barcode_printer" disabled><option value="staff">Staff</option></select>
+            </div>
           </div>
         </div>
         <button class="btn-primary" id="btn-add-user">Tambah Pengguna</button>
@@ -972,6 +982,7 @@
     if (isOwner) document.getElementById('card-analitik').style.display = '';
     if (isOwner) document.getElementById('card-stok').style.display = '';
     if (isOwner) document.getElementById('card-bordir').style.display = '';
+    if (isOwner) document.getElementById('card-barcode').style.display = '';
 
     // tampilkan section sesuai toko
     if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
@@ -1090,7 +1101,7 @@
         tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
         return;
       }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Harmoni Bordir' };
+      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Harmoni Bordir', barcode_printer: '🖨️ Harmoni Barcode' };
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
         _usersCache[d.id] = u;
@@ -1376,7 +1387,7 @@
   }
 
   // ── APP ACCESS TOGGLE ──
-  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok', 'hitungbordir'];
+  const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok', 'hitungbordir', 'barcode_printer'];
 
   const CO_DIVISIONS = ['bordir','butik','jersey','jilbab','sablon','konveksi','medali-pin','papan-nama','pin-fiber','sewa-kostum','tailor'];
 
@@ -1597,6 +1608,10 @@
       <label><input type="checkbox" id="app-edt-hitungbordir" onchange="toggleAppItem('edt','hitungbordir')"> 🪡 Harmoni Bordir</label>
       <select id="role-edt-hitungbordir" disabled><option value="staff">Staff</option></select>
     </div>
+    <div class="app-access-item" id="ai-edt-barcode_printer">
+      <label><input type="checkbox" id="app-edt-barcode_printer" onchange="toggleAppItem('edt','barcode_printer')"> 🖨️ Harmoni Barcode</label>
+      <select id="role-edt-barcode_printer" disabled><option value="staff">Staff</option></select>
+    </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeEditModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
       <button id="btn-confirm-edit" onclick="confirmEditModal()" style="padding:8px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">💾 Simpan Perubahan</button>
@@ -1657,6 +1672,10 @@
     <div class="app-access-item" id="ai-apv-hitungbordir">
       <label><input type="checkbox" id="app-apv-hitungbordir" onchange="toggleAppItem('apv','hitungbordir')"> 🪡 Harmoni Bordir</label>
       <select id="role-apv-hitungbordir" disabled><option value="staff">Staff</option></select>
+    </div>
+    <div class="app-access-item" id="ai-apv-barcode_printer">
+      <label><input type="checkbox" id="app-apv-barcode_printer" onchange="toggleAppItem('apv','barcode_printer')"> 🖨️ Harmoni Barcode</label>
+      <select id="role-apv-barcode_printer" disabled><option value="staff">Staff</option></select>
     </div>
     <div style="display:flex;gap:10px;margin-top:22px;justify-content:flex-end;">
       <button onclick="closeApproveModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
