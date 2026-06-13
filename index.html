@@ -668,25 +668,25 @@
         <span class="section-title">Konveksi & Produksi</span>
       </div>
       <div class="apps-grid">
-        <a class="app-card" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
+        <a class="app-card" id="card-sistem-penjahit-hi" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
           <div class="app-icon">✂️</div>
           <div class="app-name">Sistem Penjahit Seragam Sekolah</div>
           <div class="app-desc">Kelola penjahit, harga, order, dan laporan produksi</div>
           <div class="app-arrow">Buka →</div>
         </a>
-        <a class="app-card" href="https://adhiitmuh.github.io/yh-sistem-produksi/" target="_blank">
+        <a class="app-card" id="card-yhk" href="https://adhiitmuh.github.io/yh-sistem-produksi/" target="_blank">
           <div class="app-icon">🏭</div>
           <div class="app-name">Sistem Penjahit Young Harmonis</div>
           <div class="app-desc">Manajemen produksi konveksi dari bahan hingga barang jadi</div>
           <div class="app-arrow">Buka →</div>
         </a>
-        <a class="app-card" href="https://adhiitmuh.github.io/custom-order-harmoni/dashboard.html" target="_blank">
+        <a class="app-card" id="card-custom-order" href="https://adhiitmuh.github.io/custom-order-harmoni/dashboard.html" target="_blank">
           <div class="app-icon">📋</div>
           <div class="app-name">Harmoni Custom Order</div>
           <div class="app-desc">Tracking pesanan custom, CRM pelanggan, dan laporan</div>
           <div class="app-arrow">Buka →</div>
         </a>
-        <a class="app-card" href="https://absensiharmoni-u4hz.vercel.app/" target="_blank">
+        <a class="app-card" id="card-absensi" href="https://absensiharmoni-u4hz.vercel.app/" target="_blank">
           <div class="app-icon">🕐</div>
           <div class="app-name">Absensi & Gaji</div>
           <div class="app-desc">Absensi karyawan dengan scan wajah dan pengelolaan gaji</div>
@@ -726,7 +726,7 @@
         <span class="section-title">Toko & Keuangan</span>
       </div>
       <div class="apps-grid">
-        <a class="app-card" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
+        <a class="app-card" id="card-sistem-penjahit-sentral" href="https://adhiitmuh.github.io/dataseragamsekolah/" target="_blank">
           <div class="app-icon">✂️</div>
           <div class="app-name">Sistem Penjahit Seragam Sekolah</div>
           <div class="app-desc">Data harga dan penjahit untuk Harmonis Sentral</div>
@@ -976,24 +976,43 @@
     document.getElementById('welcome-nama').textContent = profile.nama;
 
     const isOwner = profile.role === 'owner';
-    const toko    = profile.toko;
+    const apps    = profile.apps || {};
+
+    const hasApp  = key => isOwner || !!(apps[key] && apps[key].akses);
+    const appToko = key => (apps[key] && apps[key].toko) || '';
+
+    function setCard(id, visible) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = visible ? '' : 'none';
+    }
 
     if (isOwner) document.getElementById('btn-kelola').style.display = '';
-    if (isOwner) document.getElementById('card-analitik').style.display = '';
-    if (isOwner) document.getElementById('card-stok').style.display = '';
-    if (isOwner) document.getElementById('card-bordir').style.display = '';
-    if (isOwner) document.getElementById('card-barcode').style.display = '';
 
-    // tampilkan section sesuai toko
-    if (isOwner || toko === 'harmoni_indonesia') show('section-harmoni');
-    if (isOwner || toko === 'harmonis_sentral')  show('section-sentral');
+    // Kartu per app — tampil sesuai akses masing-masing
+    const penjahitHI      = isOwner || (hasApp('sistem_penjahit') && appToko('sistem_penjahit') === 'harmoni_indonesia');
+    const penjahitSentral = isOwner || (hasApp('sistem_penjahit') && appToko('sistem_penjahit') === 'harmonis_sentral');
 
-    // staff sentral: sembunyikan kartu laporan keuangan jika bukan aksesnya
-    // (laporan keuangan hanya untuk harmonis_sentral atau owner)
-    if (!isOwner && toko !== 'harmonis_sentral') {
-      const keu = document.getElementById('card-keuangan');
-      if (keu) keu.style.display = 'none';
-    }
+    setCard('card-sistem-penjahit-hi',      penjahitHI);
+    setCard('card-yhk',                     hasApp('yhk'));
+    setCard('card-custom-order',            hasApp('custom_order'));
+    setCard('card-absensi',                 hasApp('absensi') || isOwner || profile.toko === 'harmoni_indonesia');
+    setCard('card-analitik',                hasApp('harmoni_analitik'));
+    setCard('card-stok',                    hasApp('harmoni_stok'));
+    setCard('card-bordir',                  hasApp('hitungbordir'));
+    setCard('card-barcode',                 hasApp('barcode_printer'));
+    setCard('card-sistem-penjahit-sentral', penjahitSentral);
+    setCard('card-keuangan',                hasApp('laporan_keuangan'));
+
+    // Tampilkan section hanya jika ada minimal 1 kartu di dalamnya
+    const adaHarmoni = penjahitHI || hasApp('yhk') || hasApp('custom_order') ||
+                       hasApp('harmoni_analitik') || hasApp('harmoni_stok') ||
+                       hasApp('hitungbordir') || hasApp('barcode_printer') ||
+                       isOwner || profile.toko === 'harmoni_indonesia';
+    const adaSentral = penjahitSentral || hasApp('laporan_keuangan') ||
+                       isOwner || profile.toko === 'harmonis_sentral';
+
+    if (adaHarmoni) show('section-harmoni');
+    if (adaSentral) show('section-sentral');
   }
 
   // ── LOGIN ──
