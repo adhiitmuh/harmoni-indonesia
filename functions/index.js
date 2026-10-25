@@ -18,8 +18,16 @@ exports.hapusUserPermanen = onCall({ region: 'asia-southeast1' }, async (request
   if (!uid) throw new HttpsError('invalid-argument', 'UID tidak boleh kosong.');
   if (uid === request.auth.uid) throw new HttpsError('invalid-argument', 'Tidak bisa menghapus akun sendiri.');
 
-  // Hapus dari Firebase Authentication
-  await getAuth().deleteUser(uid);
+  // Hapus dari Firebase Authentication.
+  // Dokumen hasil migrasi lama bisa punya ID yang tidak ada di Auth — lewati saja.
+  try {
+    await getAuth().deleteUser(uid);
+  } catch (e) {
+    if (e.code !== 'auth/user-not-found') {
+      throw new HttpsError('internal', `Gagal menghapus akun Auth: ${e.message}`);
+    }
+  }
+
   // Hapus dokumen Firestore
   await getFirestore().collection('users').doc(uid).delete();
 
