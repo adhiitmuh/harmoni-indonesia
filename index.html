@@ -916,6 +916,7 @@
 
   const functions        = firebase.app('harmoni-auth').functions('asia-southeast1');
   const fnHapusPermanen  = functions.httpsCallable('hapusUser');
+  const fnGantiPassword  = functions.httpsCallable('gantiPasswordUser');
 
   let currentProfile = null;
 
@@ -1122,6 +1123,7 @@
         const isSelf = currentProfile && u.email === currentProfile.email;
         const actions = isSelf ? '' : `
           <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit Akses</button>
+          <button class="btn-reset" onclick="openPassModal('${d.id}')">Ganti Password</button>
           <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
           <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus Permanen</button>`;
         const appBadges = u.role === 'owner'
@@ -1301,6 +1303,64 @@
     } catch (e) {
       alert('Gagal kirim email: ' + e.message);
     }
+  }
+
+  // ── GANTI PASSWORD OLEH OWNER ──
+  let _passUid = null;
+
+  function openPassModal(uid) {
+    const u = _usersCache[uid] || {};
+    _passUid = uid;
+    document.getElementById('pass-modal-info').textContent =
+      `${u.nama || '—'} · ${u.email || ''}${u.username ? ' · @' + u.username : ''}`;
+    document.getElementById('pass-new').value = '';
+    document.getElementById('pass-new').type = 'text';
+    document.getElementById('pass-msg').style.display = 'none';
+    document.getElementById('pass-result').style.display = 'none';
+    document.getElementById('pass-form').style.display = '';
+    document.getElementById('pass-modal').style.display = 'flex';
+    document.getElementById('pass-new').focus();
+  }
+
+  function closePassModal() {
+    document.getElementById('pass-modal').style.display = 'none';
+    _passUid = null;
+  }
+
+  function generatePass() {
+    // Tanpa huruf/angka yang mirip (0/O, 1/l/I) supaya mudah dibacakan ke staff
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    const rnd = crypto.getRandomValues(new Uint32Array(8));
+    document.getElementById('pass-new').value = Array.from(rnd, n => chars[n % chars.length]).join('');
+  }
+
+  async function confirmPassModal() {
+    if (!_passUid) return;
+    const password = document.getElementById('pass-new').value;
+    const msgEl    = document.getElementById('pass-msg');
+    const btn      = document.getElementById('btn-confirm-pass');
+    msgEl.style.display = 'none';
+    if (password.length < 6) {
+      msgEl.textContent = 'Password minimal 6 karakter.';
+      msgEl.style.display = 'block';
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      await fnGantiPassword({ uid: _passUid, password });
+      document.getElementById('pass-result-val').textContent = password;
+      document.getElementById('pass-form').style.display = 'none';
+      document.getElementById('pass-result').style.display = '';
+    } catch (e) {
+      msgEl.textContent = 'Gagal: ' + (e.message || 'Terjadi kesalahan.');
+      msgEl.style.display = 'block';
+    }
+    btn.disabled = false; btn.textContent = '🔑 Simpan Password';
+  }
+
+  function copyPassResult() {
+    const val = document.getElementById('pass-result-val').textContent;
+    navigator.clipboard.writeText(val).then(() => alert('Password disalin!'));
   }
 
   // ── EDIT USER ──
@@ -1550,6 +1610,41 @@
     btn.textContent = 'Kirim Permintaan Daftar';
   });
 </script>
+<!-- MODAL GANTI PASSWORD -->
+<div id="pass-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:28px;width:420px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
+    <h3 style="margin:0 0 12px;color:#065652;font-size:16px;">🔑 Ganti Password</h3>
+    <div id="pass-modal-info" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:13px;color:#1d4ed8;"></div>
+
+    <div id="pass-form">
+      <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Password Baru</label>
+      <div style="display:flex;gap:8px;">
+        <input id="pass-new" type="text" placeholder="Min. 6 karakter" autocomplete="new-password" style="flex:1;padding:8px 10px;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:14px;box-sizing:border-box;" />
+        <button type="button" onclick="generatePass()" style="padding:8px 12px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;white-space:nowrap;">🎲 Buat Acak</button>
+      </div>
+      <div style="font-size:11px;color:#6b7280;margin-top:6px;line-height:1.5;">Password lama langsung tidak berlaku, dan user akan otomatis keluar dari perangkat yang sedang login.</div>
+      <div id="pass-msg" style="display:none;margin-top:10px;font-size:13px;color:#dc2626;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+        <button onclick="closePassModal()" style="padding:8px 18px;border:1.5px solid #d1d5db;background:#fff;border-radius:8px;cursor:pointer;font-family:inherit;">Batal</button>
+        <button id="btn-confirm-pass" onclick="confirmPassModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">🔑 Simpan Password</button>
+      </div>
+    </div>
+
+    <div id="pass-result" style="display:none;">
+      <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:14px 16px;">
+        <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:6px;">✅ Password berhasil diganti. Kirimkan ke user ini:</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <code id="pass-result-val" style="font-size:15px;background:#dcfce7;padding:6px 12px;border-radius:6px;flex:1;letter-spacing:1px;"></code>
+          <button class="btn-sm save" onclick="copyPassResult()">Copy</button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+        <button onclick="closePassModal()" style="padding:8px 20px;background:#065652;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-family:inherit;">Selesai</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDIT USER -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:14px;padding:28px;width:480px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
