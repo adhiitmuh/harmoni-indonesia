@@ -36,7 +36,22 @@ exports.hapusUser = onCall({ region: 'asia-southeast1' }, async (request) => {
   return { success: true };
 });
 
-exports.gantiPasswordUser = onCall({ region: 'asia-southeast1' }, async (request) => {
+// Dipanggil dari layar login (belum terautentikasi), karena Firestore Rules
+// tidak mengizinkan pengunjung anonim membaca koleksi users.
+exports.cariEmailUsername = onCall({ region: 'asia-southeast1' }, async (request) => {
+  const username = String((request.data && request.data.username) || '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,20}$/.test(username)) {
+    throw new HttpsError('not-found', 'Username tidak ditemukan.');
+  }
+  const snap = await getFirestore().collection('users')
+    .where('username', '==', username).limit(1).get();
+  if (snap.empty || !snap.docs[0].data().email) {
+    throw new HttpsError('not-found', 'Username tidak ditemukan.');
+  }
+  return { email: snap.docs[0].data().email };
+});
+
+exports.gantiPasswordUser =onCall({ region: 'asia-southeast1' }, async (request) => {
   await pastikanOwner(request);
 
   const { uid, password } = request.data;

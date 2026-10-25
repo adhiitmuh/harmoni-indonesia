@@ -917,6 +917,18 @@
   const functions        = firebase.app('harmoni-auth').functions('asia-southeast1');
   const fnHapusPermanen  = functions.httpsCallable('hapusUser');
   const fnGantiPassword  = functions.httpsCallable('gantiPasswordUser');
+  const fnCariEmail      = functions.httpsCallable('cariEmailUsername');
+
+  // true jika username sudah dipakai, false jika belum
+  async function usernameDipakai(username) {
+    try {
+      await fnCariEmail({ username });
+      return true;
+    } catch (e) {
+      if (e.code === 'functions/not-found' || e.code === 'not-found') return false;
+      throw e;
+    }
+  }
 
   let currentProfile = null;
 
@@ -1024,17 +1036,16 @@
     btn.disabled   = true;
     btn.textContent = 'Memuat...';
     try {
-      // Tanpa "@" → dianggap username, cari email-nya di Firestore
+      // Tanpa "@" → dianggap username, cari email-nya lewat Cloud Function
       let email = ident;
       if (!ident.includes('@')) {
-        let snap;
         try {
-          snap = await db.collection('users').where('username', '==', ident.toLowerCase()).limit(1).get();
-        } catch {
-          throw { code: 'portal/username-lookup-failed' };
+          const res = await fnCariEmail({ username: ident.toLowerCase() });
+          email = res.data.email;
+        } catch (err) {
+          const notFound = err.code === 'functions/not-found' || err.code === 'not-found';
+          throw { code: notFound ? 'portal/username-not-found' : 'portal/username-lookup-failed' };
         }
-        if (snap.empty || !snap.docs[0].data().email) throw { code: 'portal/username-not-found' };
-        email = snap.docs[0].data().email;
       }
       // Ingat saya → LOCAL (sesi tetap setelah browser ditutup)
       // Tidak dicentang → SESSION (otomatis logout saat tab/browser ditutup)
@@ -1172,10 +1183,10 @@
       }
       const apps = getAppsFromForm('new');
       newCred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-      // Gunakan secondaryApp.firestore() agar write pakai auth user baru (bukan owner)
+      // Ditulis dengan sesi owner: rules melarang user menulis role/aktif/apps miliknya sendiri
       const userDoc = { nama, email, role, apps, aktif: true };
       if (username) userDoc.username = username;
-      await secondaryApp.firestore().collection('users').doc(newCred.user.uid).set(userDoc);
+      await db.collection('users').doc(newCred.user.uid).set(userDoc);
       await secondaryAuth.signOut();
       newCred = null;
       resetAppForm('new');
@@ -1572,11 +1583,10 @@
     btn.textContent = 'Mengirim...';
     let regCred = null;
     try {
-      // Cek username sudah dipakai atau belum (best-effort; lewati jika rules melarang baca)
+      // Cek username sudah dipakai atau belum (best-effort; lewati jika pengecekan gagal)
       if (username) {
         try {
-          const dup = await db.collection('users').where('username', '==', username).limit(1).get();
-          if (!dup.empty) {
+          if (await usernameDipakai(username)) {
             errEl.textContent = 'Username sudah dipakai. Pilih yang lain.';
             errEl.style.display = 'block';
             btn.disabled = false; btn.textContent = 'Kirim Permintaan Daftar';
