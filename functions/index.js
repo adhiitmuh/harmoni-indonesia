@@ -5,7 +5,7 @@ const { getFirestore }       = require('firebase-admin/firestore');
 
 initializeApp();
 
-exports.hapusUserPermanen = onCall({ region: 'asia-southeast1' }, async (request) => {
+exports.hapusUser = onCall({ region: 'asia-southeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Login diperlukan.');
 
   // Pastikan yang memanggil adalah owner
