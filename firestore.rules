@@ -1,0 +1,122 @@
+// Salinan Firestore Rules project harmoni-indonesia.
+// TIDAK di-deploy otomatis — pasang manual lewat Firebase Console → Firestore → Rules,
+// karena rules ini dipakai bersama oleh semua app Harmoni.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function profilSaya() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isOwner() {
+      return request.auth != null && profilSaya().get('role', '') == 'owner';
+    }
+    function isAktif() {
+      return request.auth != null && profilSaya().get('aktif', false) == true;
+    }
+
+    // Profil user
+    match /users/{uid} {
+      // User hanya bisa membaca profilnya sendiri
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      // Daftar mandiri: hanya boleh sebagai staff yang belum aktif, tanpa akses app
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.get('role', '') == 'staff'
+        && request.resource.data.get('aktif', true) == false
+        && !('apps' in request.resource.data);
+
+      // User boleh mengubah profilnya sendiri, kecuali kolom yang mengatur hak akses
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['role', 'aktif', 'apps', 'toko', 'username', 'email']);
+
+      // Owner bisa semua
+      allow read, write: if isOwner();
+    }
+
+    // Data Sistem Penjahit — hanya user yang sudah disetujui (aktif)
+    match /toko/{document=**} {
+      allow read, write: if isAktif();
+    }
+    match /shared/{document=**} {
+      allow read, write: if isAktif();
+    }
+    match /settings/{docId} {
+      allow read, write: if isAktif();
+    }
+
+    // ── Data Laporan Keuangan — koleksi berawalan lk_ ──
+    function lkUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function lkRole() {
+      let u = lkUser();
+      return u.get('role', '') == 'owner'
+        ? 'developer'
+        : u.get('apps', {}).get('laporan_keuangan', {}).get('role', 'kasir');
+    }
+    function lkBolehAkses() {
+      let u = lkUser();
+      return request.auth != null
+        && u.get('aktif', false) == true
+        && (u.get('role', '') == 'owner'
+            || u.get('apps', {}).get('laporan_keuangan', {}).get('akses', false) == true);
+    }
+    function lkBolehTulis(koleksi) {
+      let r = lkRole();
+      return r == 'developer'
+        || (r == 'pengurus' && koleksi != 'lk_users')
+        || (r == 'kasir' && koleksi in ['lk_kasir', 'lk_pembelian', 'lk_piutang', 'lk_pengajuan_kas', 'lk_kategori']);
+    }
+    function lkTransaksi(k) {
+      return k in ['lk_kasir', 'lk_pembelian', 'lk_mutasi', 'lk_piutang', 'lk_piutang_bayar',
+                   'lk_po', 'lk_anggaran', 'lk_pengajuan_kas'];
+    }
+    function lkMilikRole() {
+      return resource.data.get('inputByRole', resource.data.get('pengajuRole', '')) == lkRole();
+    }
+    function lkUbah() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function lkKeyApproval() {
+      return ['statusApproval', 'approvedBy', 'approvedNama', 'approvedAt', 'buktiTransfer'];
+    }
+    function lkKeyKonfirmasi() {
+      return ['status', 'konfirmasiId', 'konfirmasiNama', 'kasirDocId', 'doneAt', 'rejectReason'];
+    }
+    function lkBolehAlurKerja(k) {
+      let r = lkRole();
+      return (k == 'lk_pembelian' && r == 'pengurus' && lkUbah().hasOnly(lkKeyApproval()))
+        || (k == 'lk_pengajuan_kas' && r == 'kasir' && lkUbah().hasOnly(lkKeyKonfirmasi()))
+        || (k in ['lk_piutang', 'lk_po', 'lk_anggaran'] && r == 'pengurus' && lkUbah().hasOnly(['status']));
+    }
+    function lkBolehUbahMilik(k) {
+      let r = lkRole();
+      return lkMilikRole()
+        && !(k == 'lk_pembelian' && r == 'kasir' && lkUbah().hasAny(lkKeyApproval()))
+        && !(k == 'lk_pengajuan_kas' && r == 'pengurus' && lkUbah().hasAny(lkKeyKonfirmasi()));
+    }
+    function lkBolehBuat(k) {
+      let d = request.resource.data;
+      return lkRole() == 'developer'
+        || ((!lkTransaksi(k) || d.get('inputByRole', '') == lkRole())
+            && !(k == 'lk_pembelian' && d.get('statusApproval', 'menunggu') != 'menunggu')
+            && !(k == 'lk_kategori' && d.get('status', '') != 'pending'));
+    }
+
+    match /{koleksi}/{docId} {
+      allow read: if koleksi.matches('lk_.*') && lkBolehAkses();
+      allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
+        && lkBolehTulis(koleksi) && lkBolehBuat(koleksi);
+      allow update: if koleksi.matches('lk_.*') && lkBolehAkses() && lkBolehTulis(koleksi)
+        && (lkRole() == 'developer'
+            || (koleksi != 'lk_kategori'
+                && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))));
+      allow delete: if koleksi.matches('lk_.*') && lkBolehAkses()
+        && (lkRole() == 'developer'
+            || (lkRole() == 'pengurus' && koleksi != 'lk_kategori'
+                && (!lkTransaksi(koleksi) || lkMilikRole())));
+    }
+  }
+}
