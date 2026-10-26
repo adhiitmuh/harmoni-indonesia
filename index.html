@@ -410,6 +410,23 @@
     .role-badge.owner  { background: #dcfce7; color: #15803d; }
     .role-badge.staff  { background: #eff6ff; color: #2563eb; }
     .toko-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .role-badge.menunggu { background: #fef3c7; color: #92400e; }
+
+    .user-filters { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+    .user-filters input, .user-filters select {
+      width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: 13px; background: #fff; outline: none;
+    }
+    .user-filters input { grid-column: 1 / -1; }
+    .user-filters input:focus, .user-filters select:focus { border-color: var(--green); }
+    .user-filters select:disabled { opacity: .45; }
+    .user-filters-info { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+    .btn-link { background: none; border: none; color: var(--green); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+    .toko-chips { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .toko-chip { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 10px; letter-spacing: .3px; }
+    .toko-chip.hi { background: #e6f2f1; color: var(--green); }
+    .toko-chip.sentral { background: #f3ecdc; color: #5c4a1e; }
+    @media (max-width: 640px) { .user-filters { grid-template-columns: 1fr 1fr; } }
 
     .app-access-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     .app-access-item {
@@ -754,6 +771,30 @@
     <div id="tab-list">
       <div class="card">
         <h3>Semua Pengguna</h3>
+        <div class="user-filters">
+          <input type="search" id="f-cari" placeholder="🔍 Cari nama, email, atau username" oninput="renderUsers()">
+          <select id="f-toko" onchange="renderUsers()">
+            <option value="">Semua toko</option>
+            <option value="harmoni_indonesia">Harmoni Indonesia</option>
+            <option value="harmonis_sentral">Harmonis Sentral</option>
+            <option value="keduanya">Keduanya</option>
+          </select>
+          <select id="f-app" onchange="onFilterAppChange()"></select>
+          <select id="f-role" onchange="renderUsers()" disabled>
+            <option value="">Semua role</option>
+          </select>
+          <select id="f-divisi" onchange="renderUsers()"></select>
+          <select id="f-status" onchange="renderUsers()">
+            <option value="">Semua status</option>
+            <option value="aktif">Aktif</option>
+            <option value="menunggu">Menunggu approval</option>
+            <option value="owner">Owner</option>
+          </select>
+        </div>
+        <div class="user-filters-info">
+          <span id="f-count"></span>
+          <button type="button" class="btn-link" onclick="resetUserFilters()">Reset filter</button>
+        </div>
         <table class="users-table">
           <thead>
             <tr>
@@ -1118,44 +1159,146 @@
 
   // ── LOAD USERS ──
   const _usersCache = {};
+  let _usersList = [];
+  const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Harmoni Bordir', barcode_printer: '🖨️ Harmoni Barcode' };
+  // App per toko — sama dengan pengelompokan kartu di dashboard (Sistem Penjahit pakai field toko-nya sendiri)
+  const TOKO_APPS = {
+    harmoni_indonesia: ['yhk', 'custom_order', 'harmoni_analitik', 'harmoni_stok', 'hitungbordir', 'barcode_printer'],
+    harmonis_sentral:  ['laporan_keuangan'],
+  };
+
+  // Teks dari Firestore (nama, email, dll) bisa diisi siapa saja lewat form daftar
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function tokoUser(u) {
+    if (u.role === 'owner') return ['harmoni_indonesia', 'harmonis_sentral'];
+    const apps = u.apps || {};
+    const toko = new Set();
+    if (u.toko) toko.add(u.toko);
+    if (apps.sistem_penjahit?.akses && apps.sistem_penjahit.toko) toko.add(apps.sistem_penjahit.toko);
+    Object.entries(TOKO_APPS).forEach(([t, keys]) => { if (keys.some(k => apps[k]?.akses)) toko.add(t); });
+    return [...toko].filter(t => t === 'harmoni_indonesia' || t === 'harmonis_sentral');
+  }
+
+  let _userFiltersReady = false;
+  function initUserFilters() {
+    if (_userFiltersReady) return;
+    _userFiltersReady = true;
+    document.getElementById('f-app').innerHTML = '<option value="">Semua aplikasi</option>' +
+      APP_KEYS.map(k => `<option value="${k}">${escapeHtml(APP_LABEL[k] || k)}</option>`).join('');
+    const divLabel = d => document.getElementById(`divisi-new-${d}`)?.parentElement.textContent.trim() || d;
+    document.getElementById('f-divisi').innerHTML = '<option value="">Semua divisi produksi</option>' +
+      CO_DIVISIONS.map(d => `<option value="${d}">${escapeHtml(divLabel(d))}</option>`).join('');
+  }
+
+  // Pilihan role mengikuti app yang dipilih (diambil dari dropdown role di form Tambah User)
+  function onFilterAppChange() {
+    const app    = document.getElementById('f-app').value;
+    const roleEl = document.getElementById('f-role');
+    const src    = app && document.getElementById(`role-new-${app}`);
+    roleEl.innerHTML = '<option value="">Semua role</option>' +
+      (src ? [...src.options].map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.textContent)}</option>`).join('') : '');
+    roleEl.disabled = !src;
+    renderUsers();
+  }
+
+  function resetUserFilters() {
+    ['f-cari', 'f-toko', 'f-app', 'f-divisi', 'f-status'].forEach(id => { document.getElementById(id).value = ''; });
+    onFilterAppChange();
+  }
 
   async function loadUsers() {
+    initUserFilters();
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
     try {
       const snap = await db.collection('users').get();
-      if (snap.empty) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Belum ada pengguna.</td></tr>';
-        return;
-      }
-      const APP_LABEL = { sistem_penjahit: '✂️ Sistem Penjahit', yhk: '🏭 YHK', custom_order: '📋 Custom Order', laporan_keuangan: '💰 Laporan', harmoni_analitik: '📊 Analitik', harmoni_stok: '📦 Stok Manager', hitungbordir: '🪡 Harmoni Bordir', barcode_printer: '🖨️ Harmoni Barcode' };
-      tbody.innerHTML = snap.docs.map(d => {
+      _usersList = snap.docs.map(d => {
         const u = d.data();
         _usersCache[d.id] = u;
-        const isSelf = currentProfile && u.email === currentProfile.email;
-        const actions = isSelf ? '' : `
-          <button class="btn-edit" onclick="openEditModal('${d.id}')">Edit Akses</button>
-          <button class="btn-reset" onclick="openPassModal('${d.id}')">Ganti Password</button>
-          <button class="btn-reset" onclick="kirimResetEmail('${u.email}','${u.nama}')">Reset Email</button>
-          <button class="btn-danger" onclick="hapusUser('${d.id}','${u.nama}')">Hapus Permanen</button>`;
-        const appBadges = u.role === 'owner'
-          ? '<span class="app-badge">Semua App</span>'
-          : Object.entries(u.apps || {}).filter(([,v]) => v.akses).map(([k,v]) => {
-              const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
-              const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production' : '';
-              return `<span class="app-badge">${APP_LABEL[k] || k} · ${v.role}${rangkapInfo}${tokoInfo}</span>`;
-            }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
-        return `<tr>
-          <td><strong>${u.nama || '—'}</strong></td>
-          <td style="color:#6b7280;font-size:12px;">${u.email || '—'}${u.username ? `<br><span style="color:#0e7490;">@${u.username}</span>` : ''}</td>
-          <td><span class="role-badge ${u.role}">${u.role}</span></td>
+        return { id: d.id, ...u };
+      }).sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
+      renderUsers();
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Gagal memuat: ${escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderUsers() {
+    const tbody   = document.getElementById('users-tbody');
+    const cari    = document.getElementById('f-cari').value.trim().toLowerCase();
+    const fToko   = document.getElementById('f-toko').value;
+    const fApp    = document.getElementById('f-app').value;
+    const fRole   = document.getElementById('f-role').value;
+    const fDivisi = document.getElementById('f-divisi').value;
+    const fStatus = document.getElementById('f-status').value;
+
+    const rows = _usersList.filter(u => {
+      const apps    = u.apps || {};
+      const isOwner = u.role === 'owner';
+      if (cari && ![u.nama, u.email, u.username].some(v => (v || '').toLowerCase().includes(cari))) return false;
+      if (fToko) {
+        const toko = tokoUser(u);
+        if (fToko === 'keduanya' ? toko.length < 2 : !toko.includes(fToko)) return false;
+      }
+      if (fApp) {
+        if (!isOwner && !apps[fApp]?.akses) return false;
+        if (fRole) {
+          if (isOwner) return false;
+          const a = apps[fApp];
+          const merangkap = fApp === 'custom_order' && fRole === 'production' && a.merangkapProduction;
+          if (a.role !== fRole && !merangkap) return false;
+        }
+      }
+      if (fDivisi && !(apps.custom_order?.akses && (apps.custom_order.divisions || []).includes(fDivisi))) return false;
+      if (fStatus === 'aktif' && !u.aktif) return false;
+      if (fStatus === 'menunggu' && u.aktif) return false;
+      if (fStatus === 'owner' && !isOwner) return false;
+      return true;
+    });
+
+    document.getElementById('f-count').textContent = `Menampilkan ${rows.length} dari ${_usersList.length} user`;
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">${_usersList.length ? 'Tidak ada user yang cocok dengan filter.' : 'Belum ada pengguna.'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(u => {
+      const isSelf = currentProfile && u.email === currentProfile.email;
+      const actions = isSelf ? '' : `
+          <button class="btn-edit" onclick="openEditModal('${u.id}')">Edit Akses</button>
+          <button class="btn-reset" onclick="openPassModal('${u.id}')">Ganti Password</button>
+          <button class="btn-reset" onclick="kirimResetEmailById('${u.id}')">Reset Email</button>
+          <button class="btn-danger" onclick="hapusUserById('${u.id}')">Hapus Permanen</button>`;
+      const appBadges = u.role === 'owner'
+        ? '<span class="app-badge">Semua App</span>'
+        : Object.entries(u.apps || {}).filter(([, v]) => v.akses).map(([k, v]) => {
+            const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
+            const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production' : '';
+            return `<span class="app-badge">${escapeHtml(APP_LABEL[k] || k)} · ${escapeHtml(v.role)}${rangkapInfo}${tokoInfo}</span>`;
+          }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
+      const tokoChips = tokoUser(u).map(t => t === 'harmoni_indonesia'
+        ? '<span class="toko-chip hi">HARMONI INDONESIA</span>'
+        : '<span class="toko-chip sentral">HARMONIS SENTRAL</span>').join('');
+      const tipe = u.aktif ? escapeHtml(u.role) : 'menunggu';
+      return `<tr>
+          <td><strong>${escapeHtml(u.nama || '—')}</strong>${tokoChips ? `<div class="toko-chips">${tokoChips}</div>` : ''}</td>
+          <td style="color:#6b7280;font-size:12px;">${escapeHtml(u.email || '—')}${u.username ? `<br><span style="color:#0e7490;">@${escapeHtml(u.username)}</span>` : ''}</td>
+          <td><span class="role-badge ${u.aktif ? escapeHtml(u.role) : 'menunggu'}">${tipe}</span></td>
           <td><div class="apps-badges">${appBadges}</div></td>
           <td>${actions}</td>
         </tr>`;
-      }).join('');
-    } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="5" style="color:red;">Gagal memuat: ${e.message}</td></tr>`;
-    }
+    }).join('');
+  }
+
+  function kirimResetEmailById(uid) {
+    const u = _usersCache[uid] || {};
+    kirimResetEmail(u.email, u.nama || '');
+  }
+  function hapusUserById(uid) {
+    hapusUser(uid, (_usersCache[uid] || {}).nama || '');
   }
 
   // ── TAMBAH USER ──
@@ -1255,30 +1398,31 @@
       }
       tbody.innerHTML = snap.docs.map(d => {
         const u = d.data();
+        _usersCache[d.id] = u;
         return `<tr>
-          <td><strong>${u.nama || '—'}</strong></td>
-          <td style="color:#6b7280">${u.email || '—'}</td>
-          <td><div class="toko-label">${tokoLabel[u.toko] || u.toko || '—'}</div></td>
+          <td><strong>${escapeHtml(u.nama || '—')}</strong></td>
+          <td style="color:#6b7280">${escapeHtml(u.email || '—')}</td>
+          <td><div class="toko-label">${escapeHtml(tokoLabel[u.toko] || u.toko || '—')}</div></td>
           <td>
-            <button class="btn-primary" style="padding:4px 12px;font-size:12px;" onclick="approveUser('${d.id}','${u.nama}')">Setujui</button>
-            <button class="btn-danger" style="margin-left:4px;" onclick="hapusUser('${d.id}','${u.nama}')">Tolak</button>
+            <button class="btn-primary" style="padding:4px 12px;font-size:12px;" onclick="approveUser('${d.id}')">Setujui</button>
+            <button class="btn-danger" style="margin-left:4px;" onclick="hapusUserById('${d.id}')">Tolak</button>
           </td>
         </tr>`;
       }).join('');
     } catch (e) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color:red;">Gagal memuat: ${e.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="color:red;">Gagal memuat: ${escapeHtml(e.message)}</td></tr>`;
     }
   }
 
   let _apvUid = null, _apvNama = null;
 
-  async function approveUser(uid, nama) {
+  async function approveUser(uid) {
     try {
       const snap = await db.collection('users').doc(uid).get();
       const u = snap.data() || {};
-      _apvUid = uid; _apvNama = nama;
+      _apvUid = uid; _apvNama = u.nama || '';
       document.getElementById('approve-modal-info').innerHTML =
-        `<strong>${u.nama || nama}</strong>&nbsp;·&nbsp;${u.email || ''}&nbsp;·&nbsp;Toko: ${u.toko === 'harmoni_indonesia' ? 'Harmoni Indonesia' : 'Harmonis Sentral'}`;
+        `<strong>${escapeHtml(u.nama)}</strong>&nbsp;·&nbsp;${escapeHtml(u.email)}&nbsp;·&nbsp;Toko: ${u.toko === 'harmoni_indonesia' ? 'Harmoni Indonesia' : 'Harmonis Sentral'}`;
       resetAppForm('apv');
       // Pre-isi toko sistem_penjahit sesuai toko pendaftaran
       const tokoSel = document.getElementById('toko-apv-sistem_penjahit');
@@ -1386,7 +1530,7 @@
       _editUid = uid;
 
       document.getElementById('edit-modal-info').innerHTML =
-        `<strong>${u.nama || ''}</strong>&nbsp;·&nbsp;<span style="color:#6b7280">${u.email || ''}</span>`;
+        `<strong>${escapeHtml(u.nama)}</strong>&nbsp;·&nbsp;<span style="color:#6b7280">${escapeHtml(u.email)}</span>`;
       document.getElementById('edit-nama').value     = u.nama || '';
       document.getElementById('edit-role').value     = u.role || 'staff';
       document.getElementById('edit-username').value = u.username || '';
