@@ -1025,7 +1025,8 @@
 
   // ── LOGIN ──
   document.getElementById('btn-login').addEventListener('click', async () => {
-    const ident    = document.getElementById('login-email').value.trim();
+    // Tabel user menampilkan username sebagai "@nama", jadi "@" di depan diabaikan
+    const ident    = document.getElementById('login-email').value.trim().replace(/^@/, '');
     const password = document.getElementById('login-password').value;
     const errEl    = document.getElementById('login-error');
     const btn      = document.getElementById('btn-login');
