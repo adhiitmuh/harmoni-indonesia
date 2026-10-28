@@ -3,7 +3,14 @@
     {
       "source": "functions",
       "codebase": "portal",
-      "ignore": ["node_modules", ".git", "firebase-debug.log"]
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log"
+      ]
     }
-  ]
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  }
 }

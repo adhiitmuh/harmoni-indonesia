@@ -1,4 +1,4 @@
-name: Deploy Cloud Functions
+name: Deploy Cloud Functions & Firestore Rules
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'functions/**'
+      - 'firestore.rules'
       - 'firebase.json'
       - '.github/workflows/deploy-functions.yml'
   workflow_dispatch:
@@ -27,5 +28,5 @@ jobs:
         working-directory: functions
 
       - name: Deploy to Firebase
-        run: npx firebase-tools deploy --only functions --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive --force
+        run: npx firebase-tools deploy --only functions,firestore:rules --token "${{ secrets.FIREBASE_TOKEN }}" --non-interactive --force
         working-directory: .

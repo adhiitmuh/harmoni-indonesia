@@ -1,6 +1,6 @@
-// Salinan Firestore Rules project harmoni-indonesia.
-// TIDAK di-deploy otomatis — pasang manual lewat Firebase Console → Firestore → Rules,
-// karena rules ini dipakai bersama oleh semua app Harmoni.
+// Firestore Rules project harmoni-indonesia — dipakai bersama oleh semua app Harmoni.
+// Di-deploy otomatis oleh GitHub Actions saat file ini berubah di main; jangan edit
+// langsung di Firebase Console karena akan tertimpa deploy berikutnya.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -113,16 +113,32 @@ service cloud.firestore {
             && !(k == 'lk_pembelian' && d.get('statusApproval', 'menunggu') != 'menunggu')
             && !(k == 'lk_kategori' && d.get('status', '') != 'pending'));
     }
+    // Pengurus hanya melihat halaman Kasir. Entri kas yang boleh dibuatnya hanya entri
+    // otomatis dari bayar pembelian (autoFromBeli) atau piutang (sumberPiutangId).
+    function lkPengurusDiKasir(k) {
+      return k == 'lk_kasir' && lkRole() == 'pengurus';
+    }
+    function lkKasOtomatisSah() {
+      let d = request.resource.data;
+      return (d.get('autoFromBeli', null) is string
+              && existsAfter(/databases/$(database)/documents/lk_pembelian/$(d.autoFromBeli)))
+          || (d.get('sumberPiutangId', null) is string
+              && existsAfter(/databases/$(database)/documents/lk_piutang/$(d.sumberPiutangId)));
+    }
 
     match /{koleksi}/{docId} {
       allow read: if koleksi.matches('lk_.*') && lkBolehAkses();
       allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
-        && lkBolehTulis(koleksi) && lkBolehBuat(koleksi);
+        && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
+        && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah());
       allow update: if koleksi.matches('lk_.*') && lkBolehAkses() && lkBolehTulis(koleksi)
+        && !lkPengurusDiKasir(koleksi)
         && (lkRole() == 'developer'
             || (koleksi != 'lk_kategori'
                 && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))));
+      // Pengurus hanya boleh menghapus entri kas yang ikut terhapus bersama piutangnya
       allow delete: if koleksi.matches('lk_.*') && lkBolehAkses()
+        && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
         && (lkRole() == 'developer'
             || (lkRole() == 'pengurus' && koleksi != 'lk_kategori'
                 && (!lkTransaksi(koleksi) || lkMilikRole())));
