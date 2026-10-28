@@ -902,6 +902,7 @@
             <div class="app-access-item" id="ai-new-laporan_keuangan">
               <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
               <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-new-laporan_keuangan" disabled> Approver pengajuan</label>
             </div>
             <div class="app-access-item" id="ai-new-harmoni_analitik">
               <label><input type="checkbox" id="app-new-harmoni_analitik" onchange="toggleAppItem('new','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
@@ -1277,7 +1278,8 @@
         : Object.entries(u.apps || {}).filter(([, v]) => v.akses).map(([k, v]) => {
             const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
             const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production' : '';
-            return `<span class="app-badge">${escapeHtml(APP_LABEL[k] || k)} · ${escapeHtml(v.role)}${rangkapInfo}${tokoInfo}</span>`;
+            const approverInfo = v.approver ? ' +approver' : '';
+            return `<span class="app-badge">${escapeHtml(APP_LABEL[k] || k)} · ${escapeHtml(v.role)}${rangkapInfo}${approverInfo}${tokoInfo}</span>`;
           }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
       const tokoChips = tokoUser(u).map(t => t === 'harmoni_indonesia'
         ? '<span class="toko-chip hi">HARMONI INDONESIA</span>'
@@ -1546,6 +1548,8 @@
           document.getElementById(`role-edt-${key}`).value = appData.role || '';
           const tokoSel = document.getElementById(`toko-edt-${key}`);
           if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
+          const approverEl = document.getElementById(`approver-edt-${key}`);
+          if (approverEl) { approverEl.disabled = false; approverEl.checked = appData.approver === true; }
           // Pre-isi merangkap production & divisions untuk custom_order
           if (key === 'custom_order') {
             const rangkapEl = document.getElementById('rangkap-edt-custom_order');
@@ -1643,6 +1647,8 @@
     // Toko selector khusus sistem_penjahit
     const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
     if (tokoSel) tokoSel.disabled = !checked;
+    const approverEl = document.getElementById(`approver-${prefix}-${key}`);
+    if (approverEl) approverEl.disabled = !checked;
     // Divisi khusus custom_order
     if (key === 'custom_order') toggleCODivisions(prefix);
   }
@@ -1656,6 +1662,9 @@
       };
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) entry.toko = tokoSel.value;
+      // Approver pengajuan pengeluaran (Laporan Keuangan)
+      const approverEl = document.getElementById(`approver-${prefix}-${key}`);
+      if (approverEl && entry.akses && approverEl.checked) entry.approver = true;
       // Kumpulkan divisions jika role production atau merangkap production
       if (key === 'custom_order' && entry.akses) {
         const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
@@ -1679,6 +1688,8 @@
       document.getElementById(`role-${prefix}-${key}`).disabled = true;
       const tokoSel = document.getElementById(`toko-${prefix}-${key}`);
       if (tokoSel) tokoSel.disabled = true;
+      const approverEl = document.getElementById(`approver-${prefix}-${key}`);
+      if (approverEl) { approverEl.checked = false; approverEl.disabled = true; }
       // Reset divisi & merangkap production custom_order
       if (key === 'custom_order') {
         CO_DIVISIONS.forEach(d => {
@@ -1859,6 +1870,7 @@
     <div class="app-access-item" id="ai-edt-laporan_keuangan">
       <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
       <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-edt-laporan_keuangan" disabled> Approver pengajuan</label>
     </div>
     <div class="app-access-item" id="ai-edt-harmoni_analitik">
       <label><input type="checkbox" id="app-edt-harmoni_analitik" onchange="toggleAppItem('edt','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
@@ -1924,6 +1936,7 @@
     <div class="app-access-item" id="ai-apv-laporan_keuangan">
       <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
       <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+              <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-apv-laporan_keuangan" disabled> Approver pengajuan</label>
     </div>
     <div class="app-access-item" id="ai-apv-harmoni_analitik">
       <label><input type="checkbox" id="app-apv-harmoni_analitik" onchange="toggleAppItem('apv','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>

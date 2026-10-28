@@ -92,7 +92,8 @@ service cloud.firestore {
       return ['statusApproval', 'approvedBy', 'approvedNama', 'approvedAt', 'buktiTransfer'];
     }
     function lkKeyKonfirmasi() {
-      return ['status', 'konfirmasiId', 'konfirmasiNama', 'kasirDocId', 'doneAt', 'rejectReason'];
+      return ['status', 'konfirmasiId', 'konfirmasiNama', 'kasirDocId', 'doneAt', 'rejectReason',
+              'ditolakTahap', 'ditolakId', 'ditolakNama'];
     }
     function lkBolehAlurKerja(k) {
       let r = lkRole();
@@ -123,25 +124,74 @@ service cloud.firestore {
       return (d.get('autoFromBeli', null) is string
               && existsAfter(/databases/$(database)/documents/lk_pembelian/$(d.autoFromBeli)))
           || (d.get('sumberPiutangId', null) is string
-              && existsAfter(/databases/$(database)/documents/lk_piutang/$(d.sumberPiutangId)));
+              && existsAfter(/databases/$(database)/documents/lk_piutang/$(d.sumberPiutangId)))
+          || lkKasDariApprovalSah();
+    }
+
+    // ── Pengajuan pengeluaran: pengaju → cek Owner → approval (approver) → masuk kas ──
+    // Status 'cek' → 'approval' → 'done' | 'rejected'; 'pending' = alur lama (konfirmasi Kasir).
+    function lkIsApprover() {
+      return lkUser().get('apps', {}).get('laporan_keuangan', {}).get('approver', false) == true;
+    }
+    function lkPgjSetelah(id) {
+      return getAfter(/databases/$(database)/documents/lk_pengajuan_kas/$(id)).data;
+    }
+    // Entri kas dari pengajuan hanya sah bila pengajuan itu disetujui oleh pencatatnya sendiri
+    function lkKasDariApprovalSah() {
+      let d = request.resource.data;
+      return d.get('sumberPengajuanId', null) is string
+        && lkPgjSetelah(d.sumberPengajuanId).get('status', '') == 'done'
+        && lkPgjSetelah(d.sumberPengajuanId).get('approvalId', '') == request.auth.uid;
+    }
+    function lkPgjBuatSah() {
+      let d = request.resource.data;
+      return lkRole() == 'developer'
+        || (lkRole() == 'pengurus' && d.get('status', '') == 'cek'
+            && d.get('pengajuId', '') == request.auth.uid
+            && !d.keys().hasAny(['cekId', 'approvalId', 'kasirDocId', 'konfirmasiId']));
+    }
+    function lkPgjUbahSah() {
+      let sebelum = resource.data.get('status', '');
+      let sesudah = request.resource.data.get('status', '');
+      let ubah = lkUbah();
+      let approverSah = sebelum == 'approval' && lkIsApprover()
+        && resource.data.get('pengajuId', '') != request.auth.uid;
+      return (approverSah && sesudah == 'done'
+              && request.resource.data.get('approvalId', '') == request.auth.uid
+              && ubah.hasOnly(['status', 'approvalId', 'approvalNama', 'approvalAt', 'kasirDocId', 'doneAt']))
+        || (approverSah && sesudah == 'rejected'
+              && ubah.hasOnly(['status', 'rejectReason', 'ditolakTahap', 'ditolakId', 'ditolakNama', 'doneAt']))
+        || (sebelum == 'pending' && lkRole() == 'kasir' && sesudah in ['done', 'rejected']
+              && ubah.hasOnly(lkKeyKonfirmasi()));
+    }
+    function lkPgjHapusSah() {
+      return lkRole() == 'developer'
+        || (resource.data.get('pengajuId', '') == request.auth.uid
+            && resource.data.get('status', '') in ['cek', 'approval']);
     }
 
     match /{koleksi}/{docId} {
       allow read: if koleksi.matches('lk_.*') && lkBolehAkses();
       allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
         && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
-        && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah());
-      allow update: if koleksi.matches('lk_.*') && lkBolehAkses() && lkBolehTulis(koleksi)
-        && !lkPengurusDiKasir(koleksi)
-        && (lkRole() == 'developer'
-            || (koleksi != 'lk_kategori'
-                && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))));
+        && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah())
+        && (koleksi != 'lk_pengajuan_kas' || lkPgjBuatSah());
+      // Pengajuan pengeluaran punya aturan transisi sendiri (lkPgjUbahSah)
+      allow update: if koleksi.matches('lk_.*') && lkBolehAkses()
+        && ((koleksi == 'lk_pengajuan_kas' && (lkRole() == 'developer' || lkPgjUbahSah()))
+            || (koleksi != 'lk_pengajuan_kas' && lkBolehTulis(koleksi)
+                && !lkPengurusDiKasir(koleksi)
+                && (lkRole() == 'developer'
+                    || (koleksi != 'lk_kategori'
+                        && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))))));
       // Pengurus hanya boleh menghapus entri kas yang ikut terhapus bersama piutangnya
       allow delete: if koleksi.matches('lk_.*') && lkBolehAkses()
-        && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
-        && (lkRole() == 'developer'
-            || (lkRole() == 'pengurus' && koleksi != 'lk_kategori'
-                && (!lkTransaksi(koleksi) || lkMilikRole())));
+        && ((koleksi == 'lk_pengajuan_kas' && lkPgjHapusSah())
+            || (koleksi != 'lk_pengajuan_kas'
+                && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
+                && (lkRole() == 'developer'
+                    || (lkRole() == 'pengurus' && koleksi != 'lk_kategori'
+                        && (!lkTransaksi(koleksi) || lkMilikRole())))));
     }
   }
 }
