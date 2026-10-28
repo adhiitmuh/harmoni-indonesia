@@ -146,7 +146,7 @@ service cloud.firestore {
     function lkPgjBuatSah() {
       let d = request.resource.data;
       return lkRole() == 'developer'
-        || (lkRole() == 'pengurus' && d.get('status', '') == 'cek'
+        || (lkRole() == 'pengurus' && !lkIsApprover() && d.get('status', '') == 'cek'
             && d.get('pengajuId', '') == request.auth.uid
             && !d.keys().hasAny(['cekId', 'approvalId', 'kasirDocId', 'konfirmasiId']));
     }
