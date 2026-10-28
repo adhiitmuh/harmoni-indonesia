@@ -655,7 +655,7 @@
       </div>
     </div>
     <div class="header-right">
-      <div class="user-pill">
+      <div class="user-pill" onclick="ubahNamaSendiri()" title="Ketuk untuk mengubah nama" style="cursor:pointer;">
         <div class="user-avatar" id="hdr-avatar">?</div>
         <div class="user-info-text">
           <div class="uname" id="hdr-nama">—</div>
@@ -1014,6 +1014,23 @@
       auth.signOut();
     }
   });
+
+  // Nama tampilan sendiri (dipakai juga di app lain, mis. "dicek oleh" di Laporan Keuangan)
+  async function ubahNamaSendiri() {
+    if (!currentProfile || !auth.currentUser) return;
+    const baru = (prompt('Nama yang ditampilkan:', currentProfile.nama || '') || '').trim();
+    if (!baru || baru === currentProfile.nama) return;
+    if (baru.length > 50) { alert('Nama maksimal 50 karakter.'); return; }
+    try {
+      await db.collection('users').doc(auth.currentUser.uid).update({ nama: baru });
+      currentProfile.nama = baru;
+      document.getElementById('hdr-nama').textContent     = baru;
+      document.getElementById('hdr-avatar').textContent   = baru[0].toUpperCase();
+      document.getElementById('welcome-nama').textContent = baru;
+    } catch (e) {
+      alert('Gagal mengubah nama: ' + e.message);
+    }
+  }
 
   function renderDashboard(profile) {
     hide('login-screen');
