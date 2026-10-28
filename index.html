@@ -901,7 +901,7 @@
             </div>
             <div class="app-access-item" id="ai-new-laporan_keuangan">
               <label><input type="checkbox" id="app-new-laporan_keuangan" onchange="toggleAppItem('new','laporan_keuangan')"> 💰 Laporan Keuangan</label>
-              <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+              <select id="role-new-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option></select>
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-new-laporan_keuangan" disabled> Approver pengajuan</label>
             </div>
             <div class="app-access-item" id="ai-new-harmoni_analitik">
@@ -1562,7 +1562,9 @@
           document.getElementById(`app-edt-${key}`).checked = true;
           document.getElementById(`ai-edt-${key}`).classList.add('on');
           document.getElementById(`role-edt-${key}`).disabled = false;
-          document.getElementById(`role-edt-${key}`).value = appData.role || '';
+          // Role 'developer' Laporan Keuangan tidak lagi bisa diberikan — tampilkan sebagai pengurus
+          document.getElementById(`role-edt-${key}`).value =
+            (key === 'laporan_keuangan' && appData.role === 'developer') ? 'pengurus' : (appData.role || '');
           const tokoSel = document.getElementById(`toko-edt-${key}`);
           if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
           const approverEl = document.getElementById(`approver-edt-${key}`);
@@ -1886,7 +1888,7 @@
     </div>
     <div class="app-access-item" id="ai-edt-laporan_keuangan">
       <label><input type="checkbox" id="app-edt-laporan_keuangan" onchange="toggleAppItem('edt','laporan_keuangan')"> 💰 Laporan Keuangan</label>
-      <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+      <select id="role-edt-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option></select>
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-edt-laporan_keuangan" disabled> Approver pengajuan</label>
     </div>
     <div class="app-access-item" id="ai-edt-harmoni_analitik">
@@ -1952,7 +1954,7 @@
     </div>
     <div class="app-access-item" id="ai-apv-laporan_keuangan">
       <label><input type="checkbox" id="app-apv-laporan_keuangan" onchange="toggleAppItem('apv','laporan_keuangan')"> 💰 Laporan Keuangan</label>
-      <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option><option value="developer">Developer</option></select>
+      <select id="role-apv-laporan_keuangan" disabled><option value="kasir">Kasir</option><option value="pengurus">Pengurus</option><option value="pemilik">Pemilik</option></select>
               <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;margin-top:4px;cursor:pointer"><input type="checkbox" id="approver-apv-laporan_keuangan" disabled> Approver pengajuan</label>
     </div>
     <div class="app-access-item" id="ai-apv-harmoni_analitik">

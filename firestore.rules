@@ -59,11 +59,11 @@ service cloud.firestore {
     function lkUser() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
+    // Akses penuh ('developer') hanya untuk akun Owner portal; role 'developer' lama → pengurus
     function lkRole() {
       let u = lkUser();
-      return u.get('role', '') == 'owner'
-        ? 'developer'
-        : u.get('apps', {}).get('laporan_keuangan', {}).get('role', 'kasir');
+      let r = u.get('apps', {}).get('laporan_keuangan', {}).get('role', 'kasir');
+      return u.get('role', '') == 'owner' ? 'developer' : (r == 'developer' ? 'pengurus' : r);
     }
     function lkBolehAkses() {
       let u = lkUser();
