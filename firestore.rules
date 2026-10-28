@@ -164,6 +164,19 @@ service cloud.firestore {
         || (sebelum == 'pending' && lkRole() == 'kasir' && sesudah in ['done', 'rejected']
               && ubah.hasOnly(lkKeyKonfirmasi()));
     }
+    // ── Transfer internal: hanya Owner mencatat langsung; pengurus mengajukan dulu ──
+    function lkTfBuatSah() {
+      let d = request.resource.data;
+      return lkRole() == 'developer'
+        || (lkRole() == 'pengurus' && d.get('status', '') == 'menunggu'
+            && d.get('pengajuId', '') == request.auth.uid
+            && !d.keys().hasAny(['approvalId', 'mutasiDocId', 'ditolakId']));
+    }
+    function lkTfHapusSah() {
+      return lkRole() == 'developer'
+        || (resource.data.get('pengajuId', '') == request.auth.uid
+            && resource.data.get('status', '') == 'menunggu');
+    }
     function lkPgjHapusSah() {
       return lkRole() == 'developer'
         || (resource.data.get('pengajuId', '') == request.auth.uid
@@ -173,22 +186,30 @@ service cloud.firestore {
     match /{koleksi}/{docId} {
       allow read: if koleksi.matches('lk_.*') && lkBolehAkses();
       allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
-        && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
-        && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah())
-        && (koleksi != 'lk_pengajuan_kas' || lkPgjBuatSah());
-      // Pengajuan pengeluaran punya aturan transisi sendiri (lkPgjUbahSah)
+        && ((koleksi == 'lk_pengajuan_transfer' && lkTfBuatSah())
+            || (koleksi != 'lk_pengajuan_transfer'
+                && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
+                && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah())
+                && (koleksi != 'lk_pengajuan_kas' || lkPgjBuatSah())
+                && (koleksi != 'lk_mutasi' || lkRole() == 'developer')));
+      // Pengajuan pengeluaran & transfer punya aturan transisi sendiri
       allow update: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_kas' && (lkRole() == 'developer' || lkPgjUbahSah()))
-            || (koleksi != 'lk_pengajuan_kas' && lkBolehTulis(koleksi)
+            || (koleksi == 'lk_pengajuan_transfer' && lkRole() == 'developer')
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer'])
+                && lkBolehTulis(koleksi)
                 && !lkPengurusDiKasir(koleksi)
+                && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
                 && (lkRole() == 'developer'
                     || (koleksi != 'lk_kategori'
                         && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))))));
       // Pengurus hanya boleh menghapus entri kas yang ikut terhapus bersama piutangnya
       allow delete: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_kas' && lkPgjHapusSah())
-            || (koleksi != 'lk_pengajuan_kas'
+            || (koleksi == 'lk_pengajuan_transfer' && lkTfHapusSah())
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer'])
                 && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
+                && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
                 && (lkRole() == 'developer'
                     || (lkRole() == 'pengurus' && koleksi != 'lk_kategori'
                         && (!lkTransaksi(koleksi) || lkMilikRole())))));
