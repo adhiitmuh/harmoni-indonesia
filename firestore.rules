@@ -200,6 +200,8 @@ service cloud.firestore {
                 && lkBolehTulis(koleksi)
                 && !lkPengurusDiKasir(koleksi)
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
+                // Isi piutang hanya diedit Owner; selain Owner hanya boleh mengubah status (lunas/aktif)
+                && (koleksi != 'lk_piutang' || lkRole() == 'developer' || lkUbah().hasOnly(['status']))
                 && (lkRole() == 'developer'
                     || (koleksi != 'lk_kategori'
                         && (!lkTransaksi(koleksi) || lkBolehUbahMilik(koleksi) || lkBolehAlurKerja(koleksi))))));
