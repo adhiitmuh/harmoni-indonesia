@@ -704,6 +704,12 @@
           <div class="app-desc">Absensi karyawan dengan scan wajah dan pengelolaan gaji</div>
           <div class="app-arrow">Buka →</div>
         </a>
+        <a class="app-card" id="card-absen-hp" href="#" onclick="bukaAbsenHp(event)" style="display:none;">
+          <div class="app-icon">📱</div>
+          <div class="app-name">Absen dari HP</div>
+          <div class="app-desc">Absen masuk & pulang dari HP sendiri — scan wajah, harus di area toko</div>
+          <div class="app-arrow">Absen →</div>
+        </a>
         <a class="app-card" id="card-analitik" href="https://adhiitmuh.github.io/harmoni-analitik-penjualan/" target="_blank" style="display:none;">
           <div class="app-icon">📊</div>
           <div class="app-name">Harmoni Analitik Penjualan</div>
@@ -950,6 +956,18 @@
 
   firebase.initializeApp(firebaseConfig, 'harmoni-auth');
   const auth = firebase.app('harmoni-auth').auth();
+
+  // Buka absen HP di Absensi dengan token login Portal (lewat #fragmen, tidak tersimpan di log server)
+  async function bukaAbsenHp(e) {
+    e.preventDefault();
+    try {
+      const token = await auth.currentUser.getIdToken(true);
+      window.location.href = 'https://absensiharmoni-u4hz.vercel.app/hp#token=' + encodeURIComponent(token);
+    } catch (err) {
+      alert('Gagal membuka absen: ' + err.message);
+    }
+  }
+  window.bukaAbsenHp = bukaAbsenHp;
   const db   = firebase.app('harmoni-auth').firestore();
 
   // ── secondary app untuk buat user baru tanpa logout ──
@@ -1063,6 +1081,7 @@
     setCard('card-yhk',                     hasApp('yhk'));
     setCard('card-custom-order',            hasApp('custom_order'));
     setCard('card-absensi',                 hasApp('absensi') || isOwner || profile.toko === 'harmoni_indonesia');
+    setCard('card-absen-hp',                !isOwner);   // dicocokkan ke data karyawan Absensi lewat email
     setCard('card-analitik',                hasApp('harmoni_analitik'));
     setCard('card-stok',                    hasApp('harmoni_stok'));
     setCard('card-bordir',                  hasApp('hitungbordir'));
