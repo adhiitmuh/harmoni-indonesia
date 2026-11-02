@@ -884,7 +884,10 @@
             </div>
             <div class="app-access-item" id="ai-new-custom_order">
               <label><input type="checkbox" id="app-new-custom_order" onchange="toggleAppItem('new','custom_order')"> 📋 Harmoni Custom Order</label>
-              <select id="role-new-custom_order" disabled onchange="toggleCODivisions('new')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+              <select id="role-new-custom_order" disabled onchange="toggleCODivisions('new')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="divisi">Pemilik Divisi</option><option value="owner">Owner</option></select>
+              <label id="pdiv-new-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;">
+                Divisi miliknya: <select id="pdiv-new-custom_order" style="font-size:12px;padding:3px 6px;"><option value="bordir">🪡 Bordir</option><option value="butik">👗 Butik</option><option value="jersey">⚽ Jersey</option><option value="jilbab">🧕 Jilbab</option><option value="sablon">🖨️ Sablon</option><option value="konveksi">👕 Konveksi</option><option value="medali-pin">🏅 Medali & Pin</option><option value="papan-nama">🏷️ Papan Nama</option><option value="pin-fiber">📌 Pin Fiber</option><option value="sewa-kostum">🎭 Sewa Kostum</option><option value="tailor">🧵 Tailor</option></select>
+              </label>
               <label id="rangkap-new-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;cursor:pointer;">
                 <input type="checkbox" id="rangkap-new-custom_order" onchange="toggleCODivisions('new')"> 🏭 Merangkap Production
               </label>
@@ -1289,7 +1292,7 @@
           if (a.role !== fRole && !merangkap) return false;
         }
       }
-      if (fDivisi && !(apps.custom_order?.akses && (apps.custom_order.divisions || []).includes(fDivisi))) return false;
+      if (fDivisi && !(apps.custom_order?.akses && ((apps.custom_order.divisions || []).includes(fDivisi) || apps.custom_order.divisi === fDivisi))) return false;
       if (fStatus === 'aktif' && !u.aktif) return false;
       if (fStatus === 'menunggu' && u.aktif) return false;
       if (fStatus === 'owner' && !isOwner) return false;
@@ -1313,7 +1316,8 @@
         ? '<span class="app-badge">Semua App</span>'
         : Object.entries(u.apps || {}).filter(([, v]) => v.akses).map(([k, v]) => {
             const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
-            const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production' : '';
+            const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production'
+              : (k === 'custom_order' && v.role === 'divisi' && v.divisi) ? ` (${v.divisi})` : '';
             const approverInfo = v.approver ? ' +approver' : '';
             return `<span class="app-badge">${escapeHtml(APP_LABEL[k] || k)} · ${escapeHtml(v.role)}${rangkapInfo}${approverInfo}${tokoInfo}</span>`;
           }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
@@ -1592,6 +1596,7 @@
           if (key === 'custom_order') {
             const rangkapEl = document.getElementById('rangkap-edt-custom_order');
             if (rangkapEl) rangkapEl.checked = !!appData.merangkapProduction;
+            if (appData.divisi) document.getElementById('pdiv-edt-custom_order').value = appData.divisi;
             const divs = appData.divisions || [];
             CO_DIVISIONS.forEach(d => {
               const el = document.getElementById(`divisi-edt-${d}`);
@@ -1669,8 +1674,11 @@
     const divEl     = document.getElementById(`div-${prefix}-custom_order`);
     const wrapEl    = document.getElementById(`rangkap-${prefix}-wrap`);
     const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
-    // Checkbox "Merangkap Production" hanya relevan jika role utamanya bukan production
-    const showRangkap = checked && role !== 'production';
+    // Pemilik Divisi: pilih satu divisi miliknya — hanya order divisi itu yang bisa dilihat
+    const pdivWrap = document.getElementById(`pdiv-${prefix}-wrap`);
+    if (pdivWrap) pdivWrap.style.display = (checked && role === 'divisi') ? 'flex' : 'none';
+    // Checkbox "Merangkap Production" hanya relevan jika role utamanya bukan production / pemilik divisi
+    const showRangkap = checked && role !== 'production' && role !== 'divisi';
     if (wrapEl) wrapEl.style.display = showRangkap ? 'flex' : 'none';
     const merangkap = showRangkap && rangkapEl && rangkapEl.checked;
     if (divEl) divEl.style.display = (checked && (role === 'production' || merangkap)) ? '' : 'none';
@@ -1706,7 +1714,8 @@
       // Kumpulkan divisions jika role production atau merangkap production
       if (key === 'custom_order' && entry.akses) {
         const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
-        const merangkap = entry.role !== 'production' && rangkapEl && rangkapEl.checked;
+        if (entry.role === 'divisi') entry.divisi = document.getElementById(`pdiv-${prefix}-custom_order`).value;
+        const merangkap = !['production', 'divisi'].includes(entry.role) && rangkapEl && rangkapEl.checked;
         if (merangkap) entry.merangkapProduction = true;
         if (entry.role === 'production' || merangkap) {
           entry.divisions = CO_DIVISIONS.filter(d =>
@@ -1740,6 +1749,8 @@
         if (rangkapEl) rangkapEl.checked = false;
         const wrapEl = document.getElementById(`rangkap-${prefix}-wrap`);
         if (wrapEl) wrapEl.style.display = 'none';
+        const pdivWrap = document.getElementById(`pdiv-${prefix}-wrap`);
+        if (pdivWrap) pdivWrap.style.display = 'none';
       }
     });
   }
@@ -1884,7 +1895,10 @@
     </div>
     <div class="app-access-item" id="ai-edt-custom_order">
       <label><input type="checkbox" id="app-edt-custom_order" onchange="toggleAppItem('edt','custom_order')"> 📋 Harmoni Custom Order</label>
-      <select id="role-edt-custom_order" disabled onchange="toggleCODivisions('edt')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="owner">Owner</option></select>
+      <select id="role-edt-custom_order" disabled onchange="toggleCODivisions('edt')"><option value="cs">CS</option><option value="production">Production</option><option value="data">Data</option><option value="manager">Manager</option><option value="divisi">Pemilik Divisi</option><option value="owner">Owner</option></select>
+              <label id="pdiv-edt-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;">
+                Divisi miliknya: <select id="pdiv-edt-custom_order" style="font-size:12px;padding:3px 6px;"><option value="bordir">🪡 Bordir</option><option value="butik">👗 Butik</option><option value="jersey">⚽ Jersey</option><option value="jilbab">🧕 Jilbab</option><option value="sablon">🖨️ Sablon</option><option value="konveksi">👕 Konveksi</option><option value="medali-pin">🏅 Medali & Pin</option><option value="papan-nama">🏷️ Papan Nama</option><option value="pin-fiber">📌 Pin Fiber</option><option value="sewa-kostum">🎭 Sewa Kostum</option><option value="tailor">🧵 Tailor</option></select>
+              </label>
       <label id="rangkap-edt-wrap" style="display:none;margin-top:6px;font-size:12px;font-weight:600;color:#374151;align-items:center;gap:6px;cursor:pointer;">
         <input type="checkbox" id="rangkap-edt-custom_order" onchange="toggleCODivisions('edt')"> 🏭 Merangkap Production
       </label>
