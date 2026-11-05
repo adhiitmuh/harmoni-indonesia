@@ -183,12 +183,60 @@ service cloud.firestore {
             && resource.data.get('status', '') in ['cek', 'approval']);
     }
 
+    // ── Tutup Kasir Harian: kasir menyalin struk penutupan, setoran diterima pengurus/Owner ──
+    // Dokumen lk_tutup_kasir/{tgl}. Status 'menunggu' → 'diterima' | 'dikembalikan' (kasir perbaiki → 'menunggu').
+    function lkTkSetelah(id) {
+      return getAfter(/databases/$(database)/documents/lk_tutup_kasir/$(id));
+    }
+    function lkTkBisaDiubah(id) {
+      return !existsAfter(/databases/$(database)/documents/lk_tutup_kasir/$(id))
+        || lkTkSetelah(id).data.get('status', '') in ['menunggu', 'dikembalikan'];
+    }
+    function lkKeyTerima() {
+      return ['diterimaId', 'diterimaNama', 'diterimaAt'];
+    }
+    function lkTkBuatSah(docId) {
+      let d = request.resource.data;
+      return lkRole() in ['developer', 'kasir']
+        && d.get('tgl', '') == docId && docId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.get('status', '') == 'menunggu'
+        && d.get('inputBy', '') == request.auth.uid && d.get('inputByRole', '') == lkRole()
+        && !d.keys().hasAny(lkKeyTerima());
+    }
+    function lkTkUbahSah() {
+      let sebelum = resource.data.get('status', '');
+      let sesudah = request.resource.data.get('status', '');
+      let ubah = lkUbah();
+      let r = lkRole();
+      return r == 'developer'
+        || (r == 'kasir' && sebelum in ['menunggu', 'dikembalikan'] && sesudah == 'menunggu'
+            && !ubah.hasAny(lkKeyTerima().concat(['tgl', 'inputBy', 'inputByNama', 'inputByRole', 'createdAt'])))
+        || (r == 'pengurus' && sebelum == 'menunggu' && sesudah == 'diterima'
+            && request.resource.data.get('diterimaId', '') == request.auth.uid
+            && ubah.hasOnly(['status'].concat(lkKeyTerima())))
+        || (r == 'pengurus' && sebelum == 'menunggu' && sesudah == 'dikembalikan'
+            && ubah.hasOnly(['status', 'catatanKembali', 'dikembalikanId', 'dikembalikanNama', 'dikembalikanAt']));
+    }
+    function lkTkHapusSah() {
+      return lkRole() == 'developer'
+        || (lkRole() == 'kasir' && resource.data.get('status', '') in ['menunggu', 'dikembalikan']);
+    }
+    // Entri kas dari Tutup Kasir: kasir hanya boleh membuat/menghapusnya selama tutup kasir
+    // hari itu belum diterima; setelah diterima hanya Owner yang bisa mengubah.
+    function lkKasTutup(d) {
+      return d.get('sumberTutupKasir', null) is string;
+    }
+
     match /{koleksi}/{docId} {
       allow read: if koleksi.matches('lk_.*') && lkBolehAkses();
       allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_transfer' && lkTfBuatSah())
-            || (koleksi != 'lk_pengajuan_transfer'
+            || (koleksi == 'lk_tutup_kasir' && lkTkBuatSah(docId))
+            || (!(koleksi in ['lk_pengajuan_transfer', 'lk_tutup_kasir'])
                 && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
+                && !(koleksi == 'lk_kasir' && lkKasTutup(request.resource.data) && lkRole() != 'developer'
+                     && !(lkRole() == 'kasir' && lkTkBisaDiubah(request.resource.data.sumberTutupKasir)
+                          && existsAfter(/databases/$(database)/documents/lk_tutup_kasir/$(request.resource.data.sumberTutupKasir))))
                 && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah())
                 && (koleksi != 'lk_pengajuan_kas' || lkPgjBuatSah())
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')));
@@ -196,8 +244,10 @@ service cloud.firestore {
       allow update: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_kas' && (lkRole() == 'developer' || lkPgjUbahSah()))
             || (koleksi == 'lk_pengajuan_transfer' && lkRole() == 'developer')
-            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer'])
+            || (koleksi == 'lk_tutup_kasir' && lkTkUbahSah())
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir'])
                 && lkBolehTulis(koleksi)
+                && !(koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() != 'developer')
                 && !lkPengurusDiKasir(koleksi)
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
                 // Isi piutang hanya diedit Owner; selain Owner hanya boleh mengubah status (lunas/aktif)
@@ -209,7 +259,12 @@ service cloud.firestore {
       allow delete: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_kas' && lkPgjHapusSah())
             || (koleksi == 'lk_pengajuan_transfer' && lkTfHapusSah())
-            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer'])
+            || (koleksi == 'lk_tutup_kasir' && lkTkHapusSah())
+            || (koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() == 'kasir'
+                && resource.data.get('inputByRole', '') == 'kasir'
+                && lkTkBisaDiubah(resource.data.sumberTutupKasir))
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir'])
+                && !(koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() != 'developer')
                 && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
                 && (lkRole() == 'developer'
