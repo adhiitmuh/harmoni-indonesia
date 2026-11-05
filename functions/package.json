@@ -1,7 +1,7 @@
 {
   "name": "harmoni-indonesia-functions",
   "description": "Cloud Functions untuk portal Harmoni Indonesia",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "main": "index.js",
   "scripts": {
     "deploy": "firebase deploy --only functions"
