@@ -50,9 +50,20 @@ service cloud.firestore {
       allow read, write: if isAktif();
     }
 
-    // Data Harmoni Analitik — hanya user dengan akses Analitik
+    // Data Harmoni Analitik
+    // Data penjualan lengkap (omzet, HPP, profit): hanya Owner & Admin Analitik.
+    function adminAnalitik() {
+      return isAktif() && (profilSaya().get('role', '') == 'owner'
+        || (profilSaya().get('apps', {}).get('harmoni_analitik', {}).get('akses', false) == true
+            && profilSaya().get('apps', {}).get('harmoni_analitik', {}).get('role', '') == 'admin'));
+    }
     match /penjualan/{docId} {
-      allow read, write: if punyaApp('harmoni_analitik');
+      allow read, write: if adminAnalitik();
+    }
+    // Ringkasan untuk Operator (qty per SKU per bulan + SKU bermasalah) — ditulis Owner/Admin
+    match /penjualan_operator/{docId} {
+      allow read: if punyaApp('harmoni_analitik');
+      allow write: if adminAnalitik();
     }
 
     // ── Data Laporan Keuangan — koleksi berawalan lk_ ──
