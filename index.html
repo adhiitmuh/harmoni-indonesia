@@ -896,7 +896,7 @@
                 <input type="checkbox" id="rangkap-new-custom_order" onchange="toggleCODivisions('new')"> 🏭 Merangkap Production
               </label>
               <div id="div-new-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
-                <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+                <span class="co-div-judul" style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
                   <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-bordir"> 🪡 Bordir</label>
                   <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-new-butik"> 👗 Butik</label>
@@ -1329,7 +1329,7 @@
         : Object.entries(u.apps || {}).filter(([, v]) => v.akses).map(([k, v]) => {
             const tokoInfo = (k === 'sistem_penjahit' && v.toko) ? ` · ${v.toko === 'harmoni_indonesia' ? 'HI' : 'Sentral'}` : '';
             const rangkapInfo = (k === 'custom_order' && v.merangkapProduction) ? ' +production'
-              : (k === 'custom_order' && v.role === 'divisi' && v.divisi) ? ` (${v.divisi})` : '';
+              : (k === 'custom_order' && v.role === 'divisi' && (v.divisions?.length || v.divisi)) ? ` (${(v.divisions?.length ? v.divisions : [v.divisi]).join(', ')})` : '';
             const approverInfo = v.approver ? ' +approver' : '';
             return `<span class="app-badge">${escapeHtml(APP_LABEL[k] || k)} · ${escapeHtml(v.role)}${rangkapInfo}${approverInfo}${tokoInfo}</span>`;
           }).join('') || '<span style="color:#9ca3af;font-size:12px;">—</span>';
@@ -1609,7 +1609,7 @@
             const rangkapEl = document.getElementById('rangkap-edt-custom_order');
             if (rangkapEl) rangkapEl.checked = !!appData.merangkapProduction;
             if (appData.divisi) document.getElementById('pdiv-edt-custom_order').value = appData.divisi;
-            const divs = appData.divisions || [];
+            const divs = (appData.divisions && appData.divisions.length) ? appData.divisions : (appData.divisi ? [appData.divisi] : []);
             CO_DIVISIONS.forEach(d => {
               const el = document.getElementById(`divisi-edt-${d}`);
               if (el) el.checked = divs.includes(d);
@@ -1686,14 +1686,16 @@
     const divEl     = document.getElementById(`div-${prefix}-custom_order`);
     const wrapEl    = document.getElementById(`rangkap-${prefix}-wrap`);
     const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
-    // Pemilik Divisi: pilih satu divisi miliknya — hanya order divisi itu yang bisa dilihat
+    // Pemilik Divisi: centang divisi miliknya (boleh lebih dari satu) — pakai daftar centang divisi
     const pdivWrap = document.getElementById(`pdiv-${prefix}-wrap`);
-    if (pdivWrap) pdivWrap.style.display = (checked && role === 'divisi') ? 'flex' : 'none';
+    if (pdivWrap) pdivWrap.style.display = 'none';
     // Checkbox "Merangkap Production" hanya relevan jika role utamanya bukan production / pemilik divisi
     const showRangkap = checked && role !== 'production' && role !== 'divisi';
     if (wrapEl) wrapEl.style.display = showRangkap ? 'flex' : 'none';
     const merangkap = showRangkap && rangkapEl && rangkapEl.checked;
-    if (divEl) divEl.style.display = (checked && (role === 'production' || merangkap)) ? '' : 'none';
+    if (divEl) divEl.style.display = (checked && (role === 'production' || role === 'divisi' || merangkap)) ? '' : 'none';
+    const judul = divEl?.querySelector('.co-div-judul');
+    if (judul) judul.textContent = role === 'divisi' ? 'Divisi miliknya:' : 'Divisi Production:';
   }
 
   function toggleAppItem(prefix, key) {
@@ -1726,14 +1728,15 @@
       // Kumpulkan divisions jika role production atau merangkap production
       if (key === 'custom_order' && entry.akses) {
         const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
-        if (entry.role === 'divisi') entry.divisi = document.getElementById(`pdiv-${prefix}-custom_order`).value;
         const merangkap = !['production', 'divisi'].includes(entry.role) && rangkapEl && rangkapEl.checked;
         if (merangkap) entry.merangkapProduction = true;
-        if (entry.role === 'production' || merangkap) {
+        if (entry.role === 'production' || entry.role === 'divisi' || merangkap) {
           entry.divisions = CO_DIVISIONS.filter(d =>
             document.getElementById(`divisi-${prefix}-${d}`).checked
           );
         }
+        // Pemilik Divisi bisa memegang beberapa divisi; 'divisi' (pertama) disimpan untuk kompatibilitas
+        if (entry.role === 'divisi') entry.divisi = entry.divisions[0] || '';
       }
       apps[key] = entry;
     });
@@ -1915,7 +1918,7 @@
         <input type="checkbox" id="rangkap-edt-custom_order" onchange="toggleCODivisions('edt')"> 🏭 Merangkap Production
       </label>
       <div id="div-edt-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
-        <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+        <span class="co-div-judul" style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-bordir"> 🪡 Bordir</label>
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-edt-butik"> 👗 Butik</label>
@@ -1981,7 +1984,7 @@
         <input type="checkbox" id="rangkap-apv-custom_order" onchange="toggleCODivisions('apv')"> 🏭 Merangkap Production
       </label>
       <div id="div-apv-custom_order" style="display:none;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0;">
-        <span style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
+        <span class="co-div-judul" style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:6px;">Divisi Production:</span>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-bordir"> 🪡 Bordir</label>
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="divisi-apv-butik"> 👗 Butik</label>
