@@ -237,27 +237,35 @@ service cloud.firestore {
 
     match /{koleksi}/{docId} {
       allow read: if koleksi.matches('lk_.*') && lkBolehAkses()
-        && (koleksi != 'lk_cek_mutasi' || lkRole() in ['developer', 'pengurus']);
+        && (koleksi != 'lk_cek_mutasi' || lkRole() in ['developer', 'pengurus'])
+        && (koleksi != 'lk_log_privat' || lkRole() == 'developer');
       allow create: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_transfer' && lkTfBuatSah())
             || (koleksi == 'lk_tutup_kasir' && lkTkBuatSah(docId))
             || (koleksi == 'lk_cek_mutasi' && lkCmBuatSah())
-            || (!(koleksi in ['lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi'])
+            || (koleksi == 'lk_log_privat' && lkRole() == 'developer')
+            || (!(koleksi in ['lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi', 'lk_log_privat'])
                 && lkBolehTulis(koleksi) && lkBolehBuat(koleksi)
                 && !(koleksi == 'lk_kasir' && lkKasTutup(request.resource.data) && lkRole() != 'developer'
                      && !(lkRole() == 'kasir' && lkTkBisaDiubah(request.resource.data.sumberTutupKasir)
                           && existsAfter(/databases/$(database)/documents/lk_tutup_kasir/$(request.resource.data.sumberTutupKasir))))
                 && !(lkPengurusDiKasir(koleksi) && !lkKasOtomatisSah())
                 && (koleksi != 'lk_pengajuan_kas' || lkPgjBuatSah())
-                && (koleksi != 'lk_mutasi' || lkRole() == 'developer')));
+                && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
+                // Saldo awal rekening & tunai hanya diatur Owner
+                && (koleksi != 'lk_rekening' || lkRole() == 'developer' || request.resource.data.get('saldoAwal', 0) == 0)
+                && (!(koleksi == 'lk_settings' && docId == 'saldo-awal') || lkRole() == 'developer')));
       // Pengajuan pengeluaran & transfer punya aturan transisi sendiri
       allow update: if koleksi.matches('lk_.*') && lkBolehAkses()
         && ((koleksi == 'lk_pengajuan_kas' && (lkRole() == 'developer' || lkPgjUbahSah()))
             || (koleksi == 'lk_pengajuan_transfer' && lkRole() == 'developer')
             || (koleksi == 'lk_tutup_kasir' && lkTkUbahSah())
             || (koleksi == 'lk_cek_mutasi' && lkRole() == 'developer')
-            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi'])
+            || (koleksi == 'lk_log_privat' && lkRole() == 'developer')
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi', 'lk_log_privat'])
                 && lkBolehTulis(koleksi)
+                && (koleksi != 'lk_rekening' || lkRole() == 'developer' || !lkUbah().hasAny(['saldoAwal']))
+                && (!(koleksi == 'lk_settings' && docId == 'saldo-awal') || lkRole() == 'developer')
                 && !(koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() != 'developer')
                 && !lkPengurusDiKasir(koleksi)
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
@@ -271,12 +279,13 @@ service cloud.firestore {
         && ((koleksi == 'lk_pengajuan_kas' && lkPgjHapusSah())
             || (koleksi == 'lk_pengajuan_transfer' && lkTfHapusSah())
             || (koleksi == 'lk_tutup_kasir' && lkTkHapusSah())
+            || (koleksi == 'lk_log_privat' && lkRole() == 'developer')
             || (koleksi == 'lk_cek_mutasi' && (lkRole() == 'developer'
                 || (resource.data.inputBy == request.auth.uid && resource.data.status == 'menunggu')))
             || (koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() == 'kasir'
                 && resource.data.get('inputByRole', '') == 'kasir'
                 && lkTkBisaDiubah(resource.data.sumberTutupKasir))
-            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi'])
+            || (!(koleksi in ['lk_pengajuan_kas', 'lk_pengajuan_transfer', 'lk_tutup_kasir', 'lk_cek_mutasi', 'lk_log_privat'])
                 && !(koleksi == 'lk_kasir' && lkKasTutup(resource.data) && lkRole() != 'developer')
                 && !(lkPengurusDiKasir(koleksi) && resource.data.get('sumberPiutangId', null) == null)
                 && (koleksi != 'lk_mutasi' || lkRole() == 'developer')
