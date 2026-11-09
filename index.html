@@ -1137,8 +1137,14 @@
       // Tidak dicentang → SESSION (otomatis logout saat tab/browser ditutup)
       const remember = document.getElementById('login-remember').checked;
       const P = firebase.auth.Auth.Persistence;
-      await auth.setPersistence(remember ? P.LOCAL : P.SESSION);
+      // Browser yang memblokir penyimpanan (mode penyamaran, cookie/data situs diblokir, browser lama)
+      // menolak LOCAL/SESSION → coba yang lebih ringan; paling akhir NONE (login hanya selama halaman terbuka)
+      let tersimpan = true;
+      for (const jenis of (remember ? [P.LOCAL, P.SESSION, P.NONE] : [P.SESSION, P.NONE])) {
+        try { await auth.setPersistence(jenis); tersimpan = jenis !== P.NONE; break; } catch (_) { /* coba berikutnya */ }
+      }
       await auth.signInWithEmailAndPassword(email, password);
+      if (!tersimpan) console.warn('Penyimpanan browser diblokir — sesi login tidak diingat.');
     } catch (e) {
       showError(pesanError(e.code) || e.message);
       btn.disabled   = false;
@@ -1173,6 +1179,8 @@
       'auth/network-request-failed':  'Gagal terhubung ke server. Periksa koneksi internet.',
       'auth/admin-restricted-operation': 'Operasi ini tidak diizinkan.',
       'auth/popup-closed-by-user':    'Proses dibatalkan.',
+      'auth/unsupported-persistence-type': 'Browser ini memblokir penyimpanan data. Matikan mode penyamaran/incognito atau izinkan cookie & data situs, lalu coba lagi.',
+      'auth/web-storage-unsupported': 'Browser ini memblokir penyimpanan data. Matikan mode penyamaran/incognito atau izinkan cookie & data situs, lalu coba lagi.',
       'portal/username-not-found':    'Username tidak ditemukan.',
       'portal/username-lookup-failed':'Gagal mencari username. Coba masuk pakai email.',
     };
