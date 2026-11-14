@@ -62,7 +62,8 @@ service cloud.firestore {
     }
     // Ringkasan untuk Operator (qty per SKU per bulan + SKU bermasalah) — ditulis Owner/Admin
     match /penjualan_operator/{docId} {
-      allow read: if punyaApp('harmoni_analitik');
+      // Stok Manager membaca ringkasan penjualan untuk filter "stok kosong & laku"
+      allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
       allow write: if adminAnalitik();
     }
 
