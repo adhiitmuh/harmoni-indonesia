@@ -83,6 +83,25 @@ service cloud.firestore {
         && docId.matches(outletSaya() + '__.*') && (resource == null || resource.data.outlet == outletSaya()));
       allow delete: if adminHQ();
     }
+    // Staf HQ di Stok Manager (memproses pesanan outlet & mengirim barang)
+    function stokHQ() {
+      return punyaApp('harmoni_stok') && outletSaya() == '';
+    }
+    // Stok outlet dari export produk Olsera akun outlet: {stok:{SKU:qty}, info:{SKU:[nama,varian,kategori]}, sendiri:{SKU:true}}
+    match /outlet_stok/{outletId} {
+      allow read: if adminHQ() || stokHQ() || (stafOutlet() && outletId == outletSaya());
+      allow write: if adminHQ() || stokHQ() || (stafOutlet() && outletId == outletSaya());
+    }
+    // Pesanan outlet ke HQ: diajukan (outlet) → dikirim / ditolak (HQ) → diterima (outlet); batal oleh outlet selama diajukan
+    match /outlet_pesanan/{id} {
+      allow read: if adminHQ() || stokHQ() || (stafOutlet() && resource.data.outlet == outletSaya());
+      allow create: if adminHQ() || (stafOutlet() && request.resource.data.outlet == outletSaya() && request.resource.data.status == 'diajukan');
+      allow update: if adminHQ() || stokHQ()
+        || (stafOutlet() && resource.data.outlet == outletSaya() && request.resource.data.outlet == outletSaya()
+            && ((resource.data.status == 'diajukan' && request.resource.data.status in ['diajukan', 'batal'])
+              || (resource.data.status == 'dikirim' && request.resource.data.status == 'diterima')));
+      allow delete: if adminHQ();
+    }
     // Ringkasan per outlet {bulan: {omzet, profit, qty, baris}} — untuk perbandingan antar outlet (HQ = 'hq')
     match /outlet_ringkas/{outletId} {
       allow read: if adminHQ() || (stafOutlet() && outletId == outletSaya());
