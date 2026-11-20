@@ -66,6 +66,15 @@ service cloud.firestore {
       allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
       allow write: if adminAnalitik();
     }
+    // Barang custom dari laporan Olsera "Item Penjualan" (nama diketik kasir, omzet, pelanggan) — Owner/Admin
+    match /penjualan_custom/{docId} {
+      allow read, write: if adminAnalitik();
+    }
+    // Ringkasan qty custom per jenis per bulan (tanpa omzet/pelanggan) — dibaca Stok Manager untuk kebutuhan bahan
+    match /penjualan_custom_ringkas/{docId} {
+      allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
+      allow write: if adminAnalitik();
+    }
 
     // ── Data Laporan Keuangan — koleksi berawalan lk_ ──
     function lkUser() {
