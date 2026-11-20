@@ -87,6 +87,13 @@ service cloud.firestore {
     function stokHQ() {
       return punyaApp('harmoni_stok') && outletSaya() == '';
     }
+    // Barang custom outlet (laporan Item Penjualan akun Olsera outlet): {outlet}__{YYYY-MM} {outlet, bulan, rows, kanal, ...}
+    match /outlet_custom/{docId} {
+      allow read: if adminHQ() || (stafOutlet() && resource.data.outlet == outletSaya());
+      allow create, update: if adminHQ() || (stafOutlet() && request.resource.data.outlet == outletSaya()
+        && docId.matches(outletSaya() + '__.*') && (resource == null || resource.data.outlet == outletSaya()));
+      allow delete: if adminHQ();
+    }
     // Stok outlet dari export produk Olsera akun outlet: {stok:{SKU:qty}, info:{SKU:[nama,varian,kategori]}, sendiri:{SKU:true}}
     match /outlet_stok/{outletId} {
       allow read: if adminHQ() || stokHQ() || (stafOutlet() && outletId == outletSaya());
