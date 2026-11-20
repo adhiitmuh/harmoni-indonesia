@@ -921,6 +921,7 @@
             <div class="app-access-item" id="ai-new-harmoni_analitik">
               <label><input type="checkbox" id="app-new-harmoni_analitik" onchange="toggleAppItem('new','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
               <select id="role-new-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+      <select id="outlet-new-harmoni_analitik" class="pilih-outlet" disabled style="margin-top:4px" title="Staf outlet hanya melihat & upload data outletnya"><option value="">🏢 HQ (bukan staf outlet)</option></select>
             </div>
             <div class="app-access-item" id="ai-new-harmoni_stok">
               <label><input type="checkbox" id="app-new-harmoni_stok" onchange="toggleAppItem('new','harmoni_stok')"> 📦 Stok Manager</label>
@@ -1263,6 +1264,7 @@
   }
 
   async function loadUsers() {
+    isiPilihanOutlet().catch(() => {})
     initUserFilters();
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '<tr><td colspan="5" style="color:#9ca3af;text-align:center;padding:20px;">Memuat...</td></tr>';
@@ -1605,6 +1607,8 @@
           if (tokoSel) { tokoSel.disabled = false; tokoSel.value = appData.toko || ''; }
           const approverEl = document.getElementById(`approver-edt-${key}`);
           if (approverEl) { approverEl.disabled = false; approverEl.checked = appData.approver === true; }
+          const outletEl = document.getElementById(`outlet-edt-${key}`);
+          if (outletEl) { outletEl.disabled = false; isiPilihanOutlet().then(() => { outletEl.value = appData.outlet || '' }) }
           // Pre-isi merangkap production & divisions untuk custom_order
           if (key === 'custom_order') {
             const rangkapEl = document.getElementById('rangkap-edt-custom_order');
@@ -1676,6 +1680,15 @@
     navigator.clipboard.writeText(val).then(() => alert('Password disalin!'));
   }
 
+  // ── Daftar outlet (cabang/titik) untuk pilihan akses Analitik — dikelola Owner di Analitik → tab 🏬 Outlet ──
+  let _outletList = null
+  async function isiPilihanOutlet() {
+    if (!_outletList) { try { const sn = await db.collection('outlet').get(); _outletList = []; sn.forEach(d => _outletList.push({ id: d.id, ...d.data() })); _outletList.sort((a, b) => String(a.nama).localeCompare(String(b.nama))) } catch (e) { _outletList = [] } }
+    document.querySelectorAll('select.pilih-outlet').forEach(sel => { if (sel.dataset.isi) return; sel.dataset.isi = '1'
+      _outletList.forEach(o => { const op = document.createElement('option'); op.value = o.id; op.textContent = '🏬 ' + (o.nama || o.id) + (o.aktif === false ? ' (nonaktif)' : ''); sel.appendChild(op) }) })
+  }
+  window.isiPilihanOutlet = isiPilihanOutlet
+
   // ── APP ACCESS TOGGLE ──
   const APP_KEYS = ['sistem_penjahit', 'yhk', 'custom_order', 'laporan_keuangan', 'harmoni_analitik', 'harmoni_stok', 'hitungbordir', 'barcode_printer'];
 
@@ -1710,6 +1723,8 @@
     if (tokoSel) tokoSel.disabled = !checked;
     const approverEl = document.getElementById(`approver-${prefix}-${key}`);
     if (approverEl) approverEl.disabled = !checked;
+    const outletEl = document.getElementById(`outlet-${prefix}-${key}`);
+    if (outletEl) outletEl.disabled = !checked;
     // Divisi khusus custom_order
     if (key === 'custom_order') toggleCODivisions(prefix);
   }
@@ -1726,6 +1741,9 @@
       // Approver pengajuan pengeluaran (Laporan Keuangan)
       const approverEl = document.getElementById(`approver-${prefix}-${key}`);
       if (approverEl && entry.akses && approverEl.checked) entry.approver = true;
+      // Outlet (cabang/titik) untuk Analitik — kosong = HQ
+      const outletEl = document.getElementById(`outlet-${prefix}-${key}`);
+      if (outletEl && entry.akses) entry.outlet = outletEl.value || '';
       // Kumpulkan divisions jika role production atau merangkap production
       if (key === 'custom_order' && entry.akses) {
         const rangkapEl = document.getElementById(`rangkap-${prefix}-custom_order`);
@@ -1753,6 +1771,8 @@
       if (tokoSel) tokoSel.disabled = true;
       const approverEl = document.getElementById(`approver-${prefix}-${key}`);
       if (approverEl) { approverEl.checked = false; approverEl.disabled = true; }
+      const outletEl = document.getElementById(`outlet-${prefix}-${key}`);
+      if (outletEl) { outletEl.value = ''; outletEl.disabled = true; }
       // Reset divisi & merangkap production custom_order
       if (key === 'custom_order') {
         CO_DIVISIONS.forEach(d => {
@@ -1943,6 +1963,7 @@
     <div class="app-access-item" id="ai-edt-harmoni_analitik">
       <label><input type="checkbox" id="app-edt-harmoni_analitik" onchange="toggleAppItem('edt','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
       <select id="role-edt-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+      <select id="outlet-edt-harmoni_analitik" class="pilih-outlet" disabled style="margin-top:4px" title="Staf outlet hanya melihat & upload data outletnya"><option value="">🏢 HQ (bukan staf outlet)</option></select>
     </div>
     <div class="app-access-item" id="ai-edt-harmoni_stok">
       <label><input type="checkbox" id="app-edt-harmoni_stok" onchange="toggleAppItem('edt','harmoni_stok')"> 📦 Stok Manager</label>
@@ -2009,6 +2030,7 @@
     <div class="app-access-item" id="ai-apv-harmoni_analitik">
       <label><input type="checkbox" id="app-apv-harmoni_analitik" onchange="toggleAppItem('apv','harmoni_analitik')"> 📊 Harmoni Analitik Penjualan</label>
       <select id="role-apv-harmoni_analitik" disabled><option value="operator">Operator</option><option value="admin">Admin</option></select>
+      <select id="outlet-apv-harmoni_analitik" class="pilih-outlet" disabled style="margin-top:4px" title="Staf outlet hanya melihat & upload data outletnya"><option value="">🏢 HQ (bukan staf outlet)</option></select>
     </div>
     <div class="app-access-item" id="ai-apv-harmoni_stok">
       <label><input type="checkbox" id="app-apv-harmoni_stok" onchange="toggleAppItem('apv','harmoni_stok')"> 📦 Stok Manager</label>

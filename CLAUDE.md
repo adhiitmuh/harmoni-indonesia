@@ -25,6 +25,7 @@ Portal login semua aplikasi Harmoni (Firebase project `harmoni-indonesia`). Repo
 | Barcode, Laporan Keuangan, dll | repo masing-masing | — | |
 
 Kunci app di `users.apps`: `yhk`, `harmoni_stok`, `harmoni_analitik`, `custom_order`, …
+`apps.harmoni_analitik.outlet` = id outlet untuk staf cabang/titik (kosong = HQ); daftar outlet di `outlet/{id}` (dikelola Owner di Analitik → 🏬 Outlet). Multi-outlet: lihat CLAUDE.md Analitik.
 Owner (`role:'owner'`) selalu boleh semua.
 
 ## Data bersama di project harmoni-indonesia (`settings/*`)

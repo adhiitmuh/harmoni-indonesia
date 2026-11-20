@@ -57,23 +57,51 @@ service cloud.firestore {
         || (profilSaya().get('apps', {}).get('harmoni_analitik', {}).get('akses', false) == true
             && profilSaya().get('apps', {}).get('harmoni_analitik', {}).get('role', '') == 'admin'));
     }
+    // Outlet (cabang/titik) — staf outlet: apps.harmoni_analitik.outlet = id outlet; kosong = HQ
+    function outletSaya() {
+      return profilSaya().get('apps', {}).get('harmoni_analitik', {}).get('outlet', '');
+    }
+    // Admin HQ = Owner, atau Admin Analitik yang tidak terikat outlet
+    function adminHQ() {
+      return adminAnalitik() && outletSaya() == '';
+    }
+    function stafOutlet() {
+      return punyaApp('harmoni_analitik') && outletSaya() != '';
+    }
     match /penjualan/{docId} {
-      allow read, write: if adminAnalitik();
+      allow read, write: if adminHQ();
+    }
+    // Daftar outlet (cabang/titik): nama, jenis keluarga|mitra, tipe — dikelola Owner
+    match /outlet/{id} {
+      allow read: if isAktif();
+      allow write: if isOwner();
+    }
+    // Penjualan per outlet per bulan: {outlet}__{bulan} {outlet, bulan, rows}
+    match /outlet_penjualan/{docId} {
+      allow read: if adminHQ() || (stafOutlet() && resource.data.outlet == outletSaya());
+      allow create, update: if adminHQ() || (stafOutlet() && request.resource.data.outlet == outletSaya()
+        && docId.matches(outletSaya() + '__.*') && (resource == null || resource.data.outlet == outletSaya()));
+      allow delete: if adminHQ();
+    }
+    // Ringkasan per outlet {bulan: {omzet, profit, qty, baris}} — untuk perbandingan antar outlet (HQ = 'hq')
+    match /outlet_ringkas/{outletId} {
+      allow read: if adminHQ() || (stafOutlet() && outletId == outletSaya());
+      allow write: if adminHQ() || (stafOutlet() && outletId == outletSaya());
     }
     // Ringkasan untuk Operator (qty per SKU per bulan + SKU bermasalah) — ditulis Owner/Admin
     match /penjualan_operator/{docId} {
       // Stok Manager membaca ringkasan penjualan untuk filter "stok kosong & laku"
       allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
-      allow write: if adminAnalitik();
+      allow write: if adminHQ();
     }
     // Barang custom dari laporan Olsera "Item Penjualan" (nama diketik kasir, omzet, pelanggan) — Owner/Admin
     match /penjualan_custom/{docId} {
-      allow read, write: if adminAnalitik();
+      allow read, write: if adminHQ();
     }
     // Ringkasan qty custom per jenis per bulan (tanpa omzet/pelanggan) — dibaca Stok Manager untuk kebutuhan bahan
     match /penjualan_custom_ringkas/{docId} {
       allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
-      allow write: if adminAnalitik();
+      allow write: if adminHQ();
     }
 
     // ── Data Laporan Keuangan — koleksi berawalan lk_ ──
