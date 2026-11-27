@@ -94,6 +94,12 @@ service cloud.firestore {
         && docId.matches(outletSaya() + '__.*') && (resource == null || resource.data.outlet == outletSaya()));
       allow delete: if adminHQ();
     }
+    // Foto barang (thumbnail) untuk tabel produk Analitik: {foto: dataURL JPEG kecil, produk, varian, oleh, at}
+    match /foto_produk/{id} {
+      allow read: if punyaApp('harmoni_analitik') || punyaApp('harmoni_stok');
+      allow create, update: if adminAnalitik() && request.resource.data.foto is string && request.resource.data.foto.size() < 400000;
+      allow delete: if adminAnalitik();
+    }
     // Stok outlet dari export produk Olsera akun outlet: {stok:{SKU:qty}, info:{SKU:[nama,varian,kategori]}, sendiri:{SKU:true}}
     match /outlet_stok/{outletId} {
       allow read: if adminHQ() || stokHQ() || (stafOutlet() && outletId == outletSaya());

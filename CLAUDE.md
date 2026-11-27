@@ -34,3 +34,4 @@ Owner (`role:'owner'`) selalu boleh semua.
 - `final_order` `{m:{SKU:qty}}` — Final Order Rekomendasi Stok (Analitik), sama di semua perangkat.
 - `penjualan` (Owner/Admin) & `penjualan_operator` (ringkasan bulanan per SKU, dibaca Stok Manager untuk "laku/bln").
 - `penjualan_custom/{YYYY-MM}` (Owner/Admin) — barang custom dari laporan Olsera "Item Penjualan" (Analitik tab 🧵); `penjualan_custom_ringkas/{YYYY-MM}` qty per jenis, dibaca Stok Manager → kebutuhan bahan custom di Daftar Belanja (resep di harmoni-stok `resep_custom`).
+- `foto_produk/{NAMA_PRODUK}` atau `{NAMA_PRODUK__VARIAN}` `{foto (dataURL JPEG ≤480px), produk, varian, oleh, at}` — foto barang di tabel Top Produk & Inventori Analitik; tulis Owner/Admin Analitik, baca Analitik & Stok Manager.
